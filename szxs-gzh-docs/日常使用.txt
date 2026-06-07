@@ -1,0 +1,25 @@
+ # 你可以直接复制用的 6 句指令
+
+  ## 生成初稿
+
+  用 szxs-gzh 生成今天的公众号 markdown 初稿。
+
+  ## 指定日期生成初稿
+
+  用 szxs-gzh 生成 2026年4月18日 的公众号 markdown 初稿。
+
+  ## 修正文章
+
+  用 szxs-gzh 按我的修改意见修正这篇文章，并输出 final_markdown。
+
+  ## 修正排序和电影信息
+
+  用 szxs-gzh 修正这篇文章的生肖排序、电影、台词和图片 URL，并输出 final_markdown。
+
+  ## 生成播客稿
+
+  用 szxs-gzh 把这篇 final_markdown 转成双人播客逐字稿。
+
+  ## 一次性说明任务
+
+  用 szxs-gzh 按四知先生公众号日更流程处理这篇内容。

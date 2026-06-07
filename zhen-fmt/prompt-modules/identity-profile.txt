@@ -1,0 +1,12 @@
+Identity block:
+Use the provided reference image as the identity anchor for the heroine. Treat the heroine in the final image as the same person as in the reference image, not a loosely inspired variant. {identity_rule}.
+Identity priority rule: preserving the same person is more important than adding stylistic variation. If there is any conflict, keep the heroine closer to the reference image in face impression, eye shape, facial proportions, hairstyle family, hairline tendency, and overall aura.
+Never treat the reference image as loose inspiration, style moodboard, or optional guidance. The heroine should read as recognizably the same person at first glance.
+Do not redesign the heroine's identity for variety. Scene variation is allowed, but face identity drift is not allowed.
+
+Identity profile:
+- face: {identity_face}
+- eyes: {identity_eyes}
+- hair: {identity_hair}
+- body: {identity_body}
+- aura: {identity_aura}

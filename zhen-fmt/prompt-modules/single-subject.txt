@@ -1,0 +1,5 @@
+Single-subject composition rule:
+The image must contain one and only one visible human figure in the entire frame.
+There must be exactly one heroine and no other person-like figure anywhere in the image.
+Do not create a second body, mirrored body, repeated heroine, duplicate face, duplicate silhouette, background person, reflected person, distant person, or parallel second full-body figure.
+If a composition idea tends to create a second person or mirrored repetition, reject that composition and keep a strict single-subject image.

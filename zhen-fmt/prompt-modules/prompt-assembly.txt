@@ -1,0 +1,6 @@
+Prompt assembly:
+- run id: {run_id}
+- variant: {variant}
+- modules: {modules_used}
+- strong modules: {strong_modules}
+- weak fallback modules: {weak_modules}

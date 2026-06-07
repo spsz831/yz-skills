@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>微信公众号封面图模板</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap"
+        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+
+        @font-face {
+            font-family: 'YouShe BiaoTiHei';
+            src: url('./assets/fonts/YouSheBiaoTiHei-Regular.woff2') format('woff2');
+            font-style: normal;
+            font-weight: 400;
+            font-display: swap;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1536px;
+            margin: 0 auto;
+            aspect-ratio: 3.35/1;
+            display: flex;
+            background: white;
+            overflow: hidden;
+        }
+
+        .main-cover {
+            flex: 2.35;
+            position: relative;
+            background-image: url('https://i.vgy.me/iakmSm.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .main-cover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(128, 128, 128, 0.2);
+            z-index: 1;
+        }
+
+        .share-cover {
+            flex: 1;
+            position: relative;
+            background-image: url('https://i.vgy.me/iakmSm.jpg');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .share-cover::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(128, 128, 128, 0.2);
+            z-index: 1;
+        }
+
+        .date-text {
+            position: absolute;
+            top: var(--date-top, 20px);
+            left: var(--date-left, 20px);
+            z-index: 2;
+            background: linear-gradient(135deg, #4d7ff0, #7b6cf1);
+            color: white;
+            font-size: var(--date-font-size, 22px);
+            font-weight: 700;
+            padding: var(--date-padding-y, 7px) var(--date-padding-x, 14px);
+            border-radius: var(--date-radius, 20px);
+            box-shadow: 0 6px 14px rgba(59, 91, 191, 0.14);
+        }
+
+        .main-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            text-align: center;
+            color: #f6f1e7;
+            font-family: 'KaiTi', 'STKaiti', 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+            font-size: var(--main-title-font-size, 68px);
+            font-weight: var(--main-title-font-weight, 700);
+            letter-spacing: var(--main-title-letter-spacing, 2px);
+            line-height: 1.2;
+            white-space: nowrap;
+            text-shadow:
+                0 0 16px rgba(0, 0, 0, 0.18),
+                3px 3px 8px rgba(0, 0, 0, 0.58);
+        }
+
+        .decorative-dots {
+            position: absolute;
+            bottom: var(--dots-bottom, 20px);
+            right: var(--dots-right, 20px);
+            z-index: 2;
+            display: flex;
+            gap: var(--dots-gap, 10px);
+        }
+
+        .dot {
+            width: var(--dot-size, 10px);
+            height: var(--dot-size, 10px);
+            border-radius: 50%;
+        }
+
+        .dot-yellow {
+            background: #fbbf24;
+        }
+
+        .dot-purple {
+            background: #8b5cf6;
+        }
+
+        .dot-blue {
+            background: #3b82f6;
+        }
+
+        .zodiac-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            text-align: center;
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            font-weight: 700;
+            letter-spacing: var(--zodiac-letter-spacing, 20px);
+            line-height: 1.25;
+        }
+
+        .zodiac-line1 {
+            display: block;
+            font-size: var(--zodiac-font-size, 80px);
+        }
+
+        .zodiac-line2 {
+            display: block;
+            margin-top: var(--zodiac-line-gap, 20px);
+            font-size: var(--zodiac-font-size, 80px);
+        }
+
+        .white-text {
+            color: white;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+        }
+
+        .yellow-text {
+            color: #fbbf24;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.7);
+        }
+
+        .share-text {
+            position: absolute;
+            bottom: var(--share-bottom, 15px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+            color: white;
+            font-family: 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+            font-size: var(--share-font-size, 14px);
+            display: flex;
+            align-items: center;
+            gap: var(--share-gap, 5px);
+            white-space: nowrap;
+        }
+
+        .share-glyph {
+            position: relative;
+            width: 15px;
+            height: 14px;
+            display: inline-block;
+        }
+
+        .share-glyph::before,
+        .share-glyph::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            width: 7px;
+            height: 2px;
+            background: currentColor;
+            border-radius: 999px;
+            transform-origin: left center;
+        }
+
+        .share-glyph::before {
+            top: 4px;
+            transform: rotate(-32deg);
+        }
+
+        .share-glyph::after {
+            top: 8px;
+            transform: rotate(28deg);
+        }
+
+        .share-node {
+            position: absolute;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .share-node-left {
+            left: 0;
+            top: 5px;
+        }
+
+        .share-node-top {
+            right: 0;
+            top: 0;
+        }
+
+        .share-node-bottom {
+            right: 0;
+            bottom: 0;
+        }
+
+        .download-btn {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .download-btn button {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .download-btn button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" id="coverImage">
+        <!-- 左边主封面图 (2.35:1) -->
+        <div class="main-cover">
+            <!-- 左上角日期文案 -->
+            <div class="date-text">6月17日 Wednesday</div>
+
+            <!-- 主要文案 -->
+            <div class="main-text">黄历运势</div>
+
+            <!-- 右下角装饰小圆点 -->
+            <div class="decorative-dots">
+                <div class="dot dot-yellow"></div>
+                <div class="dot dot-purple"></div>
+                <div class="dot dot-blue"></div>
+            </div>
+        </div>
+
+        <!-- 右边分享封面 (1:1) -->
+        <div class="share-cover">
+            <!-- 生肖运势文案 -->
+            <div class="zodiac-text">
+                <span class="zodiac-line1">
+                    <span class="white-text">生</span><span class="yellow-text">肖</span>
+                </span>
+                <span class="zodiac-line2">
+                    <span class="yellow-text">运</span><span class="white-text">势</span>
+                </span>
+            </div>
+
+            <!-- 底部分享文字 -->
+            <div class="share-text">
+                <span class="share-glyph" aria-hidden="true">
+                    <span class="share-node share-node-left"></span>
+                    <span class="share-node share-node-top"></span>
+                    <span class="share-node share-node-bottom"></span>
+                </span>
+                <span class="share-label">每日运势</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 下载按钮 -->
+    <div class="download-btn">
+        <button onclick="exportCover()">
+            <i class="fas fa-camera"></i> 导出 PNG 封面
+        </button>
+    </div>
+
+    <script>
+        const COVER_CONFIG = {
+            export: {
+                width: 1536,
+                height: 459
+            },
+            layout: {
+                leftRatio: 2.35,
+                rightRatio: 1
+            },
+            dateBadge: {
+                top: 20,
+                left: 20,
+                fontSize: 22,
+                paddingY: 7,
+                paddingX: 14,
+                radius: 20
+            },
+            mainTitle: {
+                fontFamily: '"KaiTi", "STKaiti", "Noto Serif SC", "Songti SC", "STSong", serif',
+                fontSize: 68,
+                fontWeight: 700,
+                letterSpacing: 2
+            },
+            dots: {
+                bottom: 20,
+                right: 20,
+                gap: 10,
+                size: 10
+            },
+            zodiac: {
+                fontFamily: '"Noto Sans SC", "Microsoft YaHei", sans-serif',
+                fontSize: 80,
+                letterSpacing: 20,
+                lineGap: 20
+            },
+            share: {
+                fontFamily: '"Noto Sans SC", "Microsoft YaHei", sans-serif',
+                bottom: 15,
+                fontSize: 14,
+                gap: 5
+            }
+        };
+        const EXPORT_WIDTH = COVER_CONFIG.export.width;
+        const EXPORT_HEIGHT = COVER_CONFIG.export.height;
+        const LEFT_RATIO = COVER_CONFIG.layout.leftRatio;
+        const RIGHT_RATIO = COVER_CONFIG.layout.rightRatio;
+        const TOTAL_RATIO = LEFT_RATIO + RIGHT_RATIO;
+        const LEFT_WIDTH = Math.round(EXPORT_WIDTH * LEFT_RATIO / TOTAL_RATIO);
+        const RIGHT_WIDTH = EXPORT_WIDTH - LEFT_WIDTH;
+
+        function applyCoverConfig() {
+            const root = document.documentElement;
+            root.style.setProperty('--date-top', `${COVER_CONFIG.dateBadge.top}px`);
+            root.style.setProperty('--date-left', `${COVER_CONFIG.dateBadge.left}px`);
+            root.style.setProperty('--date-font-size', `${COVER_CONFIG.dateBadge.fontSize}px`);
+            root.style.setProperty('--date-padding-y', `${COVER_CONFIG.dateBadge.paddingY}px`);
+            root.style.setProperty('--date-padding-x', `${COVER_CONFIG.dateBadge.paddingX}px`);
+            root.style.setProperty('--date-radius', `${COVER_CONFIG.dateBadge.radius}px`);
+
+            root.style.setProperty('--main-title-font-size', `${COVER_CONFIG.mainTitle.fontSize}px`);
+            root.style.setProperty('--main-title-font-weight', `${COVER_CONFIG.mainTitle.fontWeight}`);
+            root.style.setProperty('--main-title-letter-spacing', `${COVER_CONFIG.mainTitle.letterSpacing}px`);
+
+            root.style.setProperty('--dots-bottom', `${COVER_CONFIG.dots.bottom}px`);
+            root.style.setProperty('--dots-right', `${COVER_CONFIG.dots.right}px`);
+            root.style.setProperty('--dots-gap', `${COVER_CONFIG.dots.gap}px`);
+            root.style.setProperty('--dot-size', `${COVER_CONFIG.dots.size}px`);
+
+            root.style.setProperty('--zodiac-font-size', `${COVER_CONFIG.zodiac.fontSize}px`);
+            root.style.setProperty('--zodiac-letter-spacing', `${COVER_CONFIG.zodiac.letterSpacing}px`);
+            root.style.setProperty('--zodiac-line-gap', `${COVER_CONFIG.zodiac.lineGap}px`);
+
+            root.style.setProperty('--share-bottom', `${COVER_CONFIG.share.bottom}px`);
+            root.style.setProperty('--share-font-size', `${COVER_CONFIG.share.fontSize}px`);
+            root.style.setProperty('--share-gap', `${COVER_CONFIG.share.gap}px`);
+        }
+
+        // 响应式调整
+        function adjustSize() {
+            const container = document.querySelector('.container');
+            const containerWidth = container.offsetWidth;
+            const containerHeight = containerWidth / 3.35;
+            container.style.height = containerHeight + 'px';
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            applyCoverConfig();
+        });
+
+        function getBackgroundUrl(element) {
+            const bg = getComputedStyle(element).backgroundImage;
+            const match = bg.match(/url\(["']?(.*?)["']?\)/);
+            return match ? match[1] : '';
+        }
+
+        function getCanvasSafeImageUrl(src) {
+            try {
+                const url = new URL(src, window.location.href);
+                if (url.origin === window.location.origin) {
+                    return url.href;
+                }
+
+                if (url.protocol === 'http:' || url.protocol === 'https:') {
+                    return `https://images.weserv.nl/?url=${encodeURIComponent(url.host + url.pathname + url.search)}&output=jpg`;
+                }
+            } catch (_) {
+                // Fall through and use the original source.
+            }
+
+            return src;
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = async () => {
+                    try {
+                        if (img.decode) {
+                            await img.decode();
+                        }
+                    } catch (_) {
+                        // Ignore decode failures and continue with the loaded image.
+                    }
+                    resolve(img);
+                };
+                img.onerror = () => reject(new Error(`图片加载失败: ${src}`));
+                img.src = src;
+            });
+        }
+
+        function getRenderedImageCrop(img, targetWidth, targetHeight) {
+            const imageRatio = img.width / img.height;
+            const targetRatio = targetWidth / targetHeight;
+
+            if (imageRatio > targetRatio) {
+                const cropHeight = img.height;
+                const cropWidth = cropHeight * targetRatio;
+                return {
+                    sx: (img.width - cropWidth) / 2,
+                    sy: 0,
+                    sw: cropWidth,
+                    sh: cropHeight
+                };
+            }
+
+            const cropWidth = img.width;
+            const cropHeight = cropWidth / targetRatio;
+            return {
+                sx: 0,
+                sy: (img.height - cropHeight) / 2,
+                sw: cropWidth,
+                sh: cropHeight
+            };
+        }
+
+        function drawCoverImage(ctx, img, dx, dy, dw, dh) {
+            const crop = getRenderedImageCrop(img, dw, dh);
+            ctx.drawImage(img, crop.sx, crop.sy, crop.sw, crop.sh, dx, dy, dw, dh);
+        }
+
+        function getLayoutMetrics() {
+            const container = document.getElementById('coverImage');
+            const rect = container.getBoundingClientRect();
+            return {
+                containerRect: rect,
+                scaleX: EXPORT_WIDTH / rect.width,
+                scaleY: EXPORT_HEIGHT / rect.height
+            };
+        }
+
+        function getCanvasRect(element, metrics) {
+            const rect = element.getBoundingClientRect();
+            return {
+                x: (rect.left - metrics.containerRect.left) * metrics.scaleX,
+                y: (rect.top - metrics.containerRect.top) * metrics.scaleY,
+                width: rect.width * metrics.scaleX,
+                height: rect.height * metrics.scaleY
+            };
+        }
+
+        function parsePx(value, fallback = 0) {
+            const parsed = Number.parseFloat(value);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        function roundRectPath(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        function drawDateBadge(ctx, metrics) {
+            const badge = document.querySelector('.date-text');
+            const text = badge.textContent.trim();
+            const rect = getCanvasRect(badge, metrics);
+            const style = getComputedStyle(badge);
+            const radius = parsePx(style.borderTopLeftRadius) * metrics.scaleX;
+
+            ctx.save();
+            ctx.font = `700 ${parsePx(style.fontSize) * metrics.scaleY}px "Noto Sans SC", "Microsoft YaHei", sans-serif`;
+            const gradient = ctx.createLinearGradient(rect.x, rect.y, rect.x + rect.width, rect.y + rect.height);
+            gradient.addColorStop(0, '#3b82f6');
+            gradient.addColorStop(1, '#8b5cf6');
+            roundRectPath(ctx, rect.x, rect.y, rect.width, rect.height, radius);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            const paddingLeft = parsePx(style.paddingLeft) * metrics.scaleX;
+            ctx.fillText(text, rect.x + paddingLeft, rect.y + rect.height / 2 + 1);
+            ctx.restore();
+        }
+
+        function drawLetterSpacedText(ctx, text, centerX, y, letterSpacing) {
+            const chars = Array.from(text);
+            if (chars.length === 0) {
+                return;
+            }
+
+            const widths = chars.map((char) => ctx.measureText(char).width);
+            const totalWidth = widths.reduce((sum, width) => sum + width, 0) + letterSpacing * (chars.length - 1);
+            let currentX = centerX - totalWidth / 2;
+
+            chars.forEach((char, index) => {
+                ctx.fillText(char, currentX, y);
+                currentX += widths[index] + letterSpacing;
+            });
+        }
+
+        function drawMainTitle(ctx, metrics) {
+            const title = document.querySelector('.main-text');
+            const text = title.textContent.trim();
+            const rect = getCanvasRect(title, metrics);
+            const style = getComputedStyle(title);
+            ctx.save();
+            ctx.font = `${style.fontWeight} ${parsePx(style.fontSize) * metrics.scaleY}px ${COVER_CONFIG.mainTitle.fontFamily}`;
+            ctx.fillStyle = style.color;
+            ctx.textBaseline = 'middle';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.58)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+            drawLetterSpacedText(
+                ctx,
+                text,
+                rect.x + rect.width / 2,
+                rect.y + rect.height / 2,
+                parsePx(style.letterSpacing) * metrics.scaleX
+            );
+            ctx.restore();
+        }
+
+        function drawDecorativeDots(ctx, metrics) {
+            const dots = Array.from(document.querySelectorAll('.dot'));
+            ctx.save();
+            dots.forEach((dot) => {
+                const rect = getCanvasRect(dot, metrics);
+                ctx.beginPath();
+                ctx.arc(rect.x + rect.width / 2, rect.y + rect.height / 2, rect.width / 2, 0, Math.PI * 2);
+                ctx.fillStyle = getComputedStyle(dot).backgroundColor;
+                ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        function drawOutlinedText(ctx, text, x, y, color, fontSize) {
+            ctx.save();
+            ctx.font = `700 ${fontSize}px ${COVER_CONFIG.zodiac.fontFamily}`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.lineWidth = 1;
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+            ctx.strokeText(text, x, y);
+            ctx.fillStyle = color;
+            ctx.fillText(text, x, y);
+            ctx.restore();
+        }
+
+        function drawShareGlyph(ctx, x, y, scale = 1) {
+            const nodeRadius = 2.7 * scale;
+            const points = {
+                left: { x, y: y + 5 * scale },
+                top: { x: x + 10 * scale, y },
+                bottom: { x: x + 10 * scale, y: y + 10 * scale }
+            };
+
+            ctx.save();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.9 * scale;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(points.left.x, points.left.y);
+            ctx.lineTo(points.top.x, points.top.y);
+            ctx.moveTo(points.left.x, points.left.y);
+            ctx.lineTo(points.bottom.x, points.bottom.y);
+            ctx.stroke();
+
+            Object.values(points).forEach((point) => {
+                ctx.beginPath();
+                ctx.fillStyle = '#ffffff';
+                ctx.arc(point.x, point.y, nodeRadius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.restore();
+        }
+
+        function drawSharePanelText(ctx, metrics) {
+            const textNodes = Array.from(document.querySelectorAll('.zodiac-text .zodiac-line1 span, .zodiac-text .zodiac-line2 span'));
+            textNodes.forEach((node) => {
+                const rect = getCanvasRect(node, metrics);
+                const style = getComputedStyle(node.parentElement);
+                drawOutlinedText(
+                    ctx,
+                    node.textContent.trim(),
+                    rect.x + rect.width / 2,
+                    rect.y + rect.height / 2,
+                    getComputedStyle(node).color,
+                    parsePx(style.fontSize) * metrics.scaleY
+                );
+            });
+
+            const label = document.querySelector('.share-label');
+            const labelRect = getCanvasRect(label, metrics);
+            const labelStyle = getComputedStyle(label.parentElement);
+            const glyphRect = getCanvasRect(document.querySelector('.share-glyph'), metrics);
+            ctx.save();
+            ctx.font = `${parsePx(labelStyle.fontSize) * metrics.scaleY}px ${COVER_CONFIG.share.fontFamily}`;
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            drawShareGlyph(ctx, glyphRect.x, glyphRect.y, glyphRect.width / 10);
+            ctx.fillText(label.textContent.trim(), labelRect.x, labelRect.y + labelRect.height / 2);
+            ctx.restore();
+        }
+
+        async function renderCanvasCover() {
+            const mainCover = document.querySelector('.main-cover');
+            const shareCover = document.querySelector('.share-cover');
+            const mainUrl = getCanvasSafeImageUrl(getBackgroundUrl(mainCover));
+            const shareUrl = getCanvasSafeImageUrl(getBackgroundUrl(shareCover));
+
+            if (!mainUrl || !shareUrl) {
+                throw new Error('未找到背景图地址');
+            }
+
+            await document.fonts.ready;
+
+            const [mainImage, shareImage] = await Promise.all([
+                loadImage(mainUrl),
+                loadImage(shareUrl)
+            ]);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = EXPORT_WIDTH;
+            canvas.height = EXPORT_HEIGHT;
+            const ctx = canvas.getContext('2d');
+            const metrics = getLayoutMetrics();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, EXPORT_WIDTH, EXPORT_HEIGHT);
+
+            drawCoverImage(ctx, mainImage, 0, 0, LEFT_WIDTH, EXPORT_HEIGHT);
+            drawCoverImage(ctx, shareImage, LEFT_WIDTH, 0, RIGHT_WIDTH, EXPORT_HEIGHT);
+
+            ctx.fillStyle = 'rgba(128, 128, 128, 0.2)';
+            ctx.fillRect(0, 0, LEFT_WIDTH, EXPORT_HEIGHT);
+            ctx.fillRect(LEFT_WIDTH, 0, RIGHT_WIDTH, EXPORT_HEIGHT);
+
+            drawDateBadge(ctx, metrics);
+            drawMainTitle(ctx, metrics);
+            drawDecorativeDots(ctx, metrics);
+            drawSharePanelText(ctx, metrics);
+
+            return canvas;
+        }
+
+        async function exportCover() {
+            try {
+                const canvas = await renderCanvasCover();
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        alert('导出失败，请重试');
+                        return;
+                    }
+
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.download = '微信封面图.png';
+                    link.href = url;
+                    link.click();
+                    URL.revokeObjectURL(url);
+                }, 'image/png');
+            } catch (error) {
+                console.error('封面导出失败:', error);
+                alert('封面导出失败，请刷新页面后重试');
+            }
+        }
+
+        window.addEventListener('resize', adjustSize);
+        window.addEventListener('load', adjustSize);
+    </script>
+</body>
+
+</html>

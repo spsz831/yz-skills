@@ -1,0 +1,3 @@
+User request block:
+Faithfully realize the user's request first. The user's request has higher priority than any sampled default scene, outfit, pose, palette, or camera suggestion. Do not override the user's intended scene, mood, styling, or setting with unrelated rooftop, terrace, city, travel, or fashion elements unless the request itself suggests them.
+User request to express in the image: {request_text}.

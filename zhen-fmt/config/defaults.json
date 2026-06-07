@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "outputRoot": "E:\\WorkCodex\\zhen-fmt",
+  "defaultModel": "gemini-3-pro-image-preview",
+  "defaultVariants": 3,
+  "renderByDefault": true,
+  "saveDebugArtifacts": false,
+  "defaultReferenceImage": "E:\\图片视频\\电脑壁纸\\人物参考图.jpg",
+  "outputWidth": 2560,
+  "outputHeight": 1440,
+  "outputFormat": "jpg",
+  "jpegQuality": 100,
+  "aspectRatio": "16:9",
+  "defaultSeedLabel": "auto",
+  "maxVariants": 3,
+  "outputNaming": {
+    "prefix": "image"
+  },
+  "identityProfile": {
+    "face": "same face impression as the reference image first, with a soft jawline, clean facial proportions, and an immediately recognizable heroine identity",
+    "eyes": "similar eye shape tendency, gaze softness, and eyelid character as the reference image, keeping the same person's visual impression",
+    "hair": "keep hairline tendency, hairstyle family, length tendency, and silhouette close to the reference image first; color may stay within silver-pink, ash-rose, or pale pink-gray only when it still reads as the same person",
+    "body": "a slender anime heroine proportion with natural full-body readability, understated elegance, and no exaggerated anatomy or duplicated limbs",
+    "aura": "quiet, self-possessed, stylish, slightly aloof, and personally expressive rather than commercial or generic"
+  },
+  "seriesStyle": {
+    "styleNameZh": "个人日系氛围插画风",
+    "subjectVibe": "exactly one young woman with subtle sensuality and effortless confidence, stylish and free-spirited but not revealing, no excessive skin exposure, no vulgar styling, she is the only human subject in the entire image",
+    "identityRule": "preserve the heroine from the reference image as the same person first: keep the same face impression, eye shape tendency, facial proportions, jawline softness, nose-mouth relationship, hairline tendency, hairstyle family, and overall aura before adding scene variation or fashion variation",
+    "hairPreference": "keep hairstyle, hair length tendency, and overall hair silhouette close to the reference image first; color can stay within silver-pink, ash-rose, or pale pink-gray only when it does not fight the reference identity",
+    "outfitPreference": "keep outfit styling understated and contemporary, but never let fashion variation override the heroine identity from the reference image",
+    "backgroundRule": "simple but structurally rich, low-density, readable, restrained, elegant, not flashy, never empty or flat",
+    "moodRule": "poetic, atmospheric, restrained, cinematic, and personally expressive rather than commercial or poster-like",
+    "renderRule": "high-end anime illustration quality with exceptionally clean focal rendering, crisp edge separation, refined fabric texture, finely described hair strands, elegant atmospheric layering, premium cinematic finish, sophisticated visual hierarchy, clear value separation, refined material response, delicate environmental depth, crisp but natural facial rendering, clean eyes, clean jawline, and precise outfit edges",
+    "lightingRule": "controlled cinematic lighting with brighter, cleaner midtones, readable ambient separation, refined environmental depth, delicate rim light when appropriate, clear focal hierarchy, and atmospheric air perspective without harsh contrast or muddy shadows",
+    "compositionRule": "balanced anime illustration composition with restrained negative space, calm horizon structure, strong silhouette readability, simple but clear foreground-midground-background layering, and a slightly smaller heroine scale that keeps the environment meaningfully present",
+    "textRule": "absolutely no text, no letters, no words, no English, no Chinese characters, no Japanese characters, no numbers, no dates, no timestamps, no subtitles, no signage, no billboards, no UI labels, no screen text, no building text, no logo, no watermark marks, no corner text, and no typographic elements anywhere in the image"
+  }
+}

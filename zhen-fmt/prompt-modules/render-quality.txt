@@ -1,0 +1,4 @@
+Style and render block:
+Visual direction: Japanese atmospheric illustration in the house style '{style_name_zh}'. The image should feel atmospheric, refined, cinematic, intimate, and quietly luxurious rather than literal, commercial, or poster-like. Composition rule: {composition_rule}.
+
+Rendering style: premium anime illustration with polished finish, delicate clean anime linework, simplified background shapes, clean silhouette design, polished high-detail rendering, visible fabric weave and hair texture, crisp focal clarity on the heroine, clean depth layering, elegant edge control, controlled micro-contrast, premium surface finish, refined sky gradients, readable midtones, subtle material richness, stable line precision, and material anchors such as {material_anchor}, not muddy, not blurry, not photorealistic, not 3D, not western cartoon, not cyberpunk neon. Rendering rule: {render_rule}.

@@ -1,18 +1,18 @@
 ---
 name: product-research
 description: 产品调研与文档写作方法论。支持产品调研报告、评测文章、开源项目文档、Skill/MCP 文档、竞品对比分析、行业分析报告、产品简报等 7 类输出。
-version: 1.2.0
+version: 1.3.0
 tags: [research, documentation, product, methodology]
 compatibility: Requires web search plus file read/write. Browser automation optional.
 metadata:
-  version: "1.2"
+  version: "1.3"
   owner: "user"
   category: "research"
   maturity: "production-ready"
   outputs: "workspace/research-plan.md workspace/research-notes/*.md workspace/registry.md workspace/{product}-research-report.md"
 ---
 
-# Product Research v1.2.0
+# Product Research v1.3.0
 
 基于 8 个产品调研实践（Runway、Pika、可灵、即梦、LibTV、Tableau、DyCharts、BrowserAct）提炼的方法论。
 
@@ -77,7 +77,7 @@ references/opensource-docs.md      # 开源文档
 references/skill-mcp-docs.md       # Skill/MCP
 references/competitive-analysis.md # 竞品对比
 references/industry-analysis.md    # 行业分析
-references/product-brief.md        # 产品简报
+references/product-brief.md        # 简报
 ```
 
 ### 2. 素材收集
@@ -274,6 +274,54 @@ npx @baoyu/url-to-markdown <url> --output ./workspace/
 - ❌ 为了"客观"而强加反面观点
 - ❌ 为了"深度"而过度解读
 
+### 3.5 写作风格基线
+
+调研类报告的 3 条强制规则——**避免 9Router 报告那种"v1.x 修正块"满天飞、1089 行失控膨胀**的踩坑。
+
+#### 规则 1：changelog 只放末尾，正文禁止 v1.x 修正标记
+
+**禁止**：
+- ❌ `> v1.4 重要事实修正：之前写错了...` 这种元叙述
+- ❌ `> 待核实：...`（除非最后真的有未解项）
+- ❌ `> 这版新增：...` 这类预告
+
+**允许**：
+- ✅ `> 来源：[1] GitHub README`
+- ✅ `> 风险提示：bus factor = 1`（一次性事实陈述）
+- ✅ 末尾统一 changelog（描述"做了什么变更"，不记录中间探索）
+
+#### 规则 2：人称与口吻（按模板分流）
+
+| 模板类型 | 人称 | 客观度 |
+|---------|-----|-------|
+| 产品调研报告 | 第三人称 | 客观 |
+| 竞品对比分析 | 第三人称 | 客观 |
+| 行业分析报告 | 第三人称 | 客观 |
+| 产品简报 | 第三人称 | 客观 |
+| 产品评测文章 | 允许第一人称 | 主观可接受 |
+| 开源项目文档 | 允许第一人称 | 中性 |
+
+**所有模板统一**：
+- 禁止 `我认为`、`我觉得`、`我试了发现...` 等主观情绪词（除评测/文档模板外）
+- 作者判断可以保留，但必须显式标注 `**分析**：` 或 `**判断**：` 分隔事实
+- 调研/简报中所有数据必须有 `[N]` 引用
+
+#### 规则 3：密度自检与档位选择
+
+**单章阈值**：单章超过 200 行 → 拆表、拆子章节，或挪到附录。**不要把内容堆到一章里**。
+
+**报告总长度阈值**：报告草稿完成 80% 时估算总行数，按"读者角色"选档位：
+
+| 档位 | 读者 | 行数 | 包含内容 |
+|-----|-----|----:|---------|
+| **A 档** | 自己存档 | 500-700 | 核心事实+判断，删所有解释性段落 |
+| **B 档（默认）** | 同事传阅 | 800-1000 | 核心+关键证据+对比表，省略案例细节 |
+| **C 档** | 公开发表 | 1500+ | 完整论述+多源交叉验证+局限说明 |
+
+**强制询问时机**：默认走 B 档。**写完 80% 时主动问一次**——给出当前行数和档位建议，让用户选 A/B/C，不要等写完 1500+ 行才问。
+
+---
+
 ### 4. 逐章审查
 
 对照原始素材验证每章内容：
@@ -294,6 +342,10 @@ npx @baoyu/url-to-markdown <url> --output ./workspace/
 - [ ] 来源评分 ≥ 7 吗？（核心数据）
 - [ ] 文件命名对吗？
 - [ ] 素材归档了吗？
+- [ ] 用了 v1.x 修正类元标记吗？（用了就删，正文不该有）
+- [ ] 调研/简报模板里出现 "我" 视角吗？（出现就改成第三人称）
+- [ ] 单章超过 200 行了吗？（拆）
+- [ ] 报告总长偏离档位目标 ±30% 了吗？（询问用户是否需要瘦身）
 
 #### 5.2 五道门控（完整报告/分析时）
 

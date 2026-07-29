@@ -1,0 +1,356 @@
+---
+name: product-research
+description: 产品调研与文档写作方法论。支持产品调研报告、评测文章、开源项目文档、Skill/MCP 文档、竞品对比分析、行业分析报告、产品简报等 7 类输出。
+version: 1.2.0
+tags: [research, documentation, product, methodology]
+compatibility: Requires web search plus file read/write. Browser automation optional.
+metadata:
+  version: "1.2"
+  owner: "user"
+  category: "research"
+  maturity: "production-ready"
+  outputs: "workspace/research-plan.md workspace/research-notes/*.md workspace/registry.md workspace/{product}-research-report.md"
+---
+
+# Product Research v1.2.0
+
+基于 8 个产品调研实践（Runway、Pika、可灵、即梦、LibTV、Tableau、DyCharts、BrowserAct）提炼的方法论。
+
+## 何时使用
+
+当用户需要：
+- 多源综合的产品调研
+- 可复用的调研文档
+- 带来源引用的分析报告
+
+**不应使用**：
+- 快速事实查询
+- 单篇文章总结
+- 用户明确只想要简短回答
+
+**判断标准**：这个任务需要可复用的证据文档和多源综合吗？如果不需要，用更轻量的方式。
+
+## 上下文管理
+
+### 始终加载
+1. 本文件 `SKILL.md`
+2. `references/research-methodology.md`
+3. `references/report-assembly.md`
+
+### 按需加载
+- `references/registry-template.md` — 完整报告/竞品分析时
+- `references/quality-gates.md` — 输出前检查时
+- `references/research-report.md` 等 7 个模板 — 确定输出类型后
+- `standards/` 下的规范 — 需要时
+
+### 上下文重置后
+仅重新加载：
+- 研究计划
+- 当前进行中的笔记
+- 来源清单
+- 未解决的问题
+
+不要重新加载整个技能树。
+
+## 触发场景
+
+| 场景 | 触发词 | 输出文件 |
+|------|-------|---------|
+| 产品调研报告 | "调研产品"、"写报告"、"深度分析" | 11 章标准报告 |
+| 产品评测文章 | "写文章"、"评测"、"体验" | 8 节体验文章 |
+| 开源项目文档 | "写 README"、"开源文档" | 7 章技术文档 |
+| Skill/MCP 文档 | "写 Skill"、"MCP 文档" | 6 章开发文档 |
+| 竞品对比分析 | "对比"、"横评" | 6 章对比报告 |
+| 行业分析报告 | "行业分析"、"赛道" | 8 章分析报告 |
+| 产品简报 | "简报"、"速览" | 5 节简报 |
+
+## 工作流程
+
+### 1. 确定场景
+
+根据用户需求匹配上方触发词，加载对应模板：
+
+```
+references/research-report.md      # 调研报告
+references/product-article.md      # 评测文章
+references/opensource-docs.md      # 开源文档
+references/skill-mcp-docs.md       # Skill/MCP
+references/competitive-analysis.md # 竞品对比
+references/industry-analysis.md    # 行业分析
+references/product-brief.md        # 产品简报
+```
+
+### 2. 素材收集
+
+**核心原则：AI 自动找 + 用户确认**
+
+不要等用户提供 URL，主动用 WebSearch 搜索候选来源，整理后让用户确认。
+
+#### 2.1 自动搜索候选来源
+
+使用 WebSearch 搜索 4 类来源，每类 2-4 个候选：
+
+| 类别 | 搜索关键词示例 | 目标 |
+|------|--------------|------|
+| **官方来源** | `{product} 官网`、`{product} docs`、`{product} pricing` | 官网、文档、定价页 |
+| **评测文章** | `{product} 评测`、`{product} review`、`{product} 体验` | 知乎、36kr、TechCrunch |
+| **竞品对比** | `{product} vs {competitor}`、`{product} alternatives` | 对比文章 |
+| **行业背景** | `{product} 融资`、`{product} funding`、`{company} 新闻` | 融资新闻、市场分析 |
+
+#### 2.2 整理候选来源列表
+
+搜索完成后，整理成结构化列表给用户确认：
+
+```
+找到 12 个候选来源，分 4 类：
+
+【官方来源】(3个)
+1. 官网首页 - https://xxx.com
+2. 官方文档 - https://docs.xxx.com
+3. 定价页面 - https://xxx.com/pricing
+
+【评测文章】(4个)
+4. 知乎评测 - https://zhuanlan.zhihu.com/...
+5. 36kr 报道 - https://36kr.com/...
+6. TechCrunch - https://techcrunch.com/...
+7. YouTube 评测 - https://youtube.com/...
+
+【竞品对比】(3个)
+8. vs Synthesia - https://...
+9. vs D-ID - https://...
+10. 横评文章 - https://...
+
+【行业背景】(2个)
+11. 融资新闻 - https://...
+12. 市场分析 - https://...
+
+建议全选，还是想跳过某些类别？
+```
+
+#### 2.3 用户确认
+
+等待用户选择：
+- **全选**：抓取所有候选来源
+- **跳过某些类别**：如"跳过竞品对比"
+- **只选官方的**：只抓取官方来源
+- **补充指定 URL**：用户额外提供 URL
+
+#### 2.4 执行抓取
+
+用户确认后，使用 `baoyu-url-to-markdown` 批量抓取：
+
+```bash
+npx @baoyu/url-to-markdown <url> --output ./workspace/
+```
+
+**命名规范**（见 `standards/material-naming.md`）：
+- 官网首页：`{product}-homepage.md`
+- 官方文档：`{product}-docs.md`
+- 评测文章：`{product}-review-{source}.md`
+- 社交媒体：`{product}-social-{platform}.md`
+
+#### 2.5 浏览器实测（可选）
+
+使用 Playwright MCP 打开官网，获取真实 UI：
+- 截图关键页面
+- Snapshot 提取页面结构
+- 记录实际功能入口
+
+#### 2.6 深度调研
+
+> **参考**：`references/research-methodology.md`（完整方法论）、`standards/quality-gates.md`（质量门控）
+
+**核心原则**：先计划 → 再笔记 → 后综合，不盲目搜完就写。
+
+##### 2.6.1 写研究计划（搜索前）
+
+读完已抓取资料后，先识别信息缺口，写一个简短计划：
+
+```markdown
+## 研究计划
+
+### 信息缺口
+| 缺口 | 搜索关键词 | 目标来源类型 | "完成"标志 |
+|------|-----------|-------------|-----------|
+| 定价方案不全 | `xxx pricing 2024` | 官方/评测 | 找到完整价格表 |
+| 技术架构不清楚 | `xxx architecture` | 技术博客/GitHub | 理解核心组件 |
+
+### 什么证据会改变结论
+- 如果 {X}，则需要修正 {Y}
+```
+
+**何时需要计划**：
+- ✅ 完整调研报告、竞品对比、行业分析
+- ❌ 简报/速览、用户指定 URL 只需抓取
+
+##### 2.6.2 缺口驱动搜索
+
+按优先级搜索（核心维度优先），每个缺口至少 2 个来源交叉验证：
+
+| 优先级 | 缺口维度 | 搜索关键词示例 |
+|--------|---------|-------------|
+| 高 | 定价方案 | `{product} pricing plans 2024` |
+| 高 | 融资背景 | `{company} funding series` |
+| 高 | 技术架构 | `{product} technical architecture` |
+| 中 | 竞品信息 | `{product} vs {competitor} comparison` |
+| 中 | 用户评价 | `{product} user reviews reddit` |
+
+**搜索策略**：
+- 优先搜索官方来源
+- 英文产品用英文搜索
+- 中文产品中英文都搜
+- 每个缺口至少 2 个来源交叉验证
+
+##### 2.6.3 生成结构化笔记（每次搜索）
+
+每个调研线程生成笔记，分离**事实、分析、冲突、缺口**：
+
+```markdown
+## 调研线程：{主题}
+
+### 来源（含 4 维评分）
+[1] 标题 | URL | Aut:9 Rec:8 Rel:9 Dep:5 = 7.8 | 官方 | 2024-12
+
+### 事实（仅来自来源）
+- 具体事实 1 [1]
+
+### 分析（你的综合判断）
+- 意味着什么 [1]
+
+### 冲突 / 未解决
+- 来源 [1] 和 [2] 在 {X} 上矛盾，原因：...
+
+### 缺口
+- 搜了但没找到的信息
+- 什么证据最能降低不确定性
+```
+
+**4 维评分标准**：
+
+| 维度 | 含义 | 高分标准 |
+|------|------|---------|
+| **权威性 (Aut)** | 来源可靠度 | 官方=9-10，专业媒体=7-8 |
+| **时效性 (Rec)** | 信息新度 | 3 个月内=9-10 |
+| **相关性 (Rel)** | 匹配度 | 直接相关=9-10 |
+| **独立性 (Dep)** | 有无利益关系 | 独立第三方=9-10 |
+
+核心数据需要综合分 ≥ 7 的来源。
+
+##### 2.6.4 冲突处理
+
+**优先级**：官方 > 独立第三方 > 新来源 > 高评分来源。
+
+冲突时标注双方数据，不隐藏矛盾：
+
+```markdown
+- 定价：¥99/月（官网 [1]）
+  > ⚠️ 知乎显示 ¥129/月 [2]，可能存在版本差异
+```
+
+##### 2.6.5 综合写入报告
+
+从笔记综合写入报告，标注所有来源。输出前过一遍 `standards/quality-gates.md` 快速自检。
+
+### 3. 生成报告
+
+> **参考**：`references/report-assembly.md`（报告组装指南）
+
+按模板结构生成初稿。
+
+**写作顺序**（不要从概述开始写）：
+1. 主体分析（各章节核心内容）
+2. 局限性和不确定性
+3. 概述/总结（最后写，因为需要概括全文）
+4. 参考来源列表
+
+**必须包含**：
+- 所有数据来源标注
+- 局限性和不确定性说明
+- 来源支撑的内容和分析判断分开
+
+**不要做**：
+- ❌ 从搜索结果直接复制粘贴
+- ❌ 没有来源的核心数据
+- ❌ 为了"客观"而强加反面观点
+- ❌ 为了"深度"而过度解读
+
+### 4. 逐章审查
+
+对照原始素材验证每章内容：
+- 替换所有 ⚠️ 占位符
+- 标注数据来源
+- 交叉验证关键数据（至少 2 个来源）
+
+### 5. 质量检查
+
+> **参考**：`standards/quality-gates.md`（完整质量门控）
+
+#### 5.1 快速自检（输出前 30 秒）
+
+- [ ] 核心数据都有来源吗？
+- [ ] 关键数据交叉验证了吗？（至少 2 个来源）
+- [ ] 冲突数据标注了吗？
+- [ ] 有局限性说明吗？
+- [ ] 来源评分 ≥ 7 吗？（核心数据）
+- [ ] 文件命名对吗？
+- [ ] 素材归档了吗？
+
+#### 5.2 五道门控（完整报告/分析时）
+
+| 门控 | 检查内容 | 通过标准 |
+|------|---------|---------|
+| **0. 路由正确** | 这个任务真的需要完整调研吗？ | 确实需要多源综合 |
+| **1. 过程完整** | 调研过程有迹可循吗？ | 有计划、有笔记、有来源清单 |
+| **2. 引用可靠** | 引用可靠吗？ | 无编造来源、核心数据有支撑 |
+| **3. 输出质量** | 用户看到的东西好吗？ | 直接回答问题、有局限性说明 |
+| **4. 效率** | 有没有浪费？ | 无重复搜索、报告长度匹配需求 |
+
+**全部通过** → 可以输出  
+**有未通过项** → 先修正再输出
+
+## 素材归档规范
+
+### 文件命名
+
+```
+workspace/
+├── {product}-official.md           # 官网
+├── {product}-guide.md              # 官方文档
+├── {product}-homepage.md           # 首页截图
+├── {product}-review-{source}.md    # 评测文章
+├── {product}-social.md             # 社交媒体
+└── {product}-research-report.md    # 最终报告
+```
+
+### 命名规则
+
+- 产品名统一用 `-` 连接（如 `libtv`、`runway`）
+- 评测文章加来源标识（如 `libtv-zhihu.md`）
+- 最终报告固定后缀 `-research-report.md`
+
+## 更新已有报告
+
+如果报告过期（> 3 个月）或需要补充：
+
+1. 检查报告日期
+2. 搜索最新动态
+3. 创建 `{product}-research-report-v{N}.md`
+4. 标注更新日期和变更内容
+
+详见 `standards/update-workflow.md`。
+
+## 工具链推荐
+
+| 工具 | 用途 |
+|------|------|
+| `baoyu-url-to-markdown` | 网页转 markdown |
+| Playwright MCP | 浏览器实测 |
+| `WebSearch` | 深度调研 |
+| `WebFetch` | 简单网页抓取 |
+| `gh` CLI | GitHub 仓库信息 |
+
+## 参考
+
+- `references/` - 7 类输出模板
+- `standards/` - 素材规范、质量检查、更新流程
+- `methodology.md` - 完整方法论说明

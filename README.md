@@ -52,6 +52,21 @@ AI 日报 / 公众号稿 / 插图规划 / 定稿发布链路 skill。
 - [ai-daily-digest](./ai-daily-digest/)
 - [ai-daily-digest-docs](./ai-daily-digest-docs/)
 
+### `product-research`
+
+产品调研与文档写作方法论 skill。
+
+适用场景：
+
+- 调研 AI 产品，生成 11 章标准报告
+- 写产品评测文章、开源项目文档、Skill/MCP 文档
+- 做竞品对比分析、行业分析、产品简报
+- 深度调研时使用结构化笔记、4 维来源评分、冲突处理
+
+目录：
+
+- [product-research](./product-research/)
+
 ## 当前仓库结构
 
 ```text
@@ -63,7 +78,8 @@ yz-skills/
 ├─ szxs-gzh-docs/
 ├─ zhen-fmt/
 ├─ ai-daily-digest/
-└─ ai-daily-digest-docs/
+├─ ai-daily-digest-docs/
+└─ product-research/
 ```
 
 ## 目录约定

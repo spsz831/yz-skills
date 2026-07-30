@@ -1,7 +1,7 @@
 ---
 name: product-research
 description: 产品调研与文档写作方法论。支持产品调研报告、评测文章、开源项目文档、Skill/MCP 文档、竞品对比分析、行业分析报告、产品简报等 7 类输出。
-version: 1.6.1
+version: 1.6.2
 tags: [research, documentation, product, methodology]
 compatibility: Requires web search plus file read/write. Browser automation optional.
 metadata:
@@ -12,7 +12,7 @@ metadata:
   outputs: "workspace/research-plan.md workspace/research-notes/*.md workspace/registry.md workspace/{product}-research-report.md"
 ---
 
-# Product Research v1.6.1
+# Product Research v1.6.2
 
 基于 8 个产品调研实践（Runway、Pika、可灵、即梦、LibTV、Tableau、DyCharts、BrowserAct）提炼的方法论。
 
@@ -62,15 +62,17 @@ metadata:
 
 ## 触发场景
 
-| 场景 | 触发词 | 输出文件 | 模板 |
+> **章节数是参考不是约束**——按产品复杂度、信息密度、用户要求灵活调整。产品调研报告默认 11 章（信息密度大的产品可扩到 13-15 章，简单工具可缩到 5-7 章）。其他模板同理。
+
+| 场景 | 触发词 | 输出文件 | 模板（基础结构） |
 |------|-------|---------|------|
-| 产品调研报告 | "调研产品"、"写报告"、"深度分析" | 11 章标准报告 | `research-report.md` |
-| 产品评测文章 | "写文章"、"评测"、"体验" | 8 节体验文章 | `product-article.md` |
-| **开源项目文档** | "写 README"、"开源文档" | 7 章技术文档 | `opensource-docs.md` |
-| **Skill/MCP 文档** | "写 Skill"、"MCP 文档" | 6 章开发文档 | `skill-mcp-docs.md` |
-| 竞品对比分析 | "对比"、"横评" | 6 章对比报告 | `competitive-analysis.md` |
-| **行业分析报告** | "行业分析"、"赛道" | 8 章分析报告 | `industry-analysis.md` |
-| **产品简报** | "简报"、"速览" | 5 节简报 | `product-brief.md` |
+| 产品调研报告 | "调研产品"、"写报告"、"深度分析" | 默认 11 章 | `research-report.md` |
+| 产品评测文章 | "写文章"、"评测"、"体验" | 默认 8 节 | `product-article.md` |
+| **开源项目文档** | "写 README"、"开源文档" | 默认 7 章 | `opensource-docs.md` |
+| **Skill/MCP 文档** | "写 Skill"、"MCP 文档" | 默认 6 章 | `skill-mcp-docs.md` |
+| 竞品对比分析 | "对比"、"横评" | 默认 6 章 | `competitive-analysis.md` |
+| **行业分析报告** | "行业分析"、"赛道" | 默认 8 章 | `industry-analysis.md` |
+| **产品简报** | "简报"、"速览" | 默认 5 节 | `product-brief.md` |
 
 > 默认走**产品调研报告**。其他 6 个场景用对应触发词自动匹配模板（v1.4.1 起明确）。
 
@@ -79,7 +81,7 @@ metadata:
 **Skill 调用后不主动询问**，按流程一气呵成到出报告：
 - 默认 B 档（同事传阅，800-1000 行）
 - 默认全选 4 类来源（12-15 条，官方源 ≥ 50%）
-- 默认 11 章模板（产品调研报告）
+- 默认 11 章模板（产品调研报告）——按需增删，复杂产品可扩到 13-15 章，简单工具可缩到 5-7 章
 
 **用户显式指定**（任何一项都覆盖默认）：
 - 档位：`A 档` / `C 档`
@@ -557,3 +559,4 @@ workspace/
 | 1.5.1 | 2026-07-29 | 6 个模板（product-article / competitive-analysis / opensource-docs / skill-mcp-docs / industry-analysis / product-brief）都加档位 meta header；material-naming 统一两种风格（无编号 / 带数字编号）都接受；SKILL.md 明确 methodology.md 是入门概览不入运行时上下文 |
 | 1.6.0 | 2026-07-29 | 9 项优化：eval 套件（fixtures/rubic/baseline）+ 3 个自动化脚本（conflict_detector / quality_gate / verify_citations）+ 4 篇新标准（state-recovery / playwright-guide / verify-citations-guide / depth-config）+ 2 个新引用（routing-decision / triggers-en）；baseline 跑分 74.7/100 |
 | 1.6.1 | 2026-07-30 | **来源标注方式变更**：正文弃用 `[N]` 内联数字引用，改用 `> 来源：xxx` 引用块紧跟事实段/表格（§3.5 规则 5）。适用范围：全部 5 类输出（调研报告/公众号/竞品对比/行业分析/产品简报）；例外：opensource-docs 允许保留内联引用。drawio 报告（v1.6.0 输出）不追溯重写 |
+| 1.6.2 | 2026-07-30 | **章节数去硬编码**：触发场景表和 §2 自动化原则中"11 章/8 节/7 章/6 章/5 节"统一改为"默认 N 章（按需增删）"。原因：信息密度大的产品需 13-15 章、简单工具 5-7 章即可，硬编码 11 局限了适用面。 |

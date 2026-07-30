@@ -1,7 +1,7 @@
 ---
 name: product-research
 description: 产品调研与文档写作方法论。支持产品调研报告、评测文章、开源项目文档、Skill/MCP 文档、竞品对比分析、行业分析报告、产品简报等 7 类输出。
-version: 1.3.0
+version: 1.6.1
 tags: [research, documentation, product, methodology]
 compatibility: Requires web search plus file read/write. Browser automation optional.
 metadata:
@@ -12,7 +12,7 @@ metadata:
   outputs: "workspace/research-plan.md workspace/research-notes/*.md workspace/registry.md workspace/{product}-research-report.md"
 ---
 
-# Product Research v1.3.0
+# Product Research v1.6.1
 
 基于 8 个产品调研实践（Runway、Pika、可灵、即梦、LibTV、Tableau、DyCharts、BrowserAct）提炼的方法论。
 
@@ -34,14 +34,22 @@ metadata:
 
 ### 始终加载
 1. 本文件 `SKILL.md`
-2. `references/research-methodology.md`
-3. `references/report-assembly.md`
+2. `references/research-methodology.md` — **操作级方法论**（研究计划/笔记/评分/冲突/缺口）
+3. `references/report-assembly.md` — 报告组装指南
+4. **根目录 `methodology.md` 不在始终加载**——它是**入门概览**（新人/回顾用），不进入运行时上下文
 
 ### 按需加载
-- `references/registry-template.md` — 完整报告/竞品分析时
-- `references/quality-gates.md` — 输出前检查时
+- `references/registry-template.md` — **完整报告/竞品对比/行业分析**时（生成 `workspace/registry.md` 来源清单）
+- `references/tension-discovery.md` — **竞品对比/行业分析/产品调研**时（挑战主流叙事，找非显而易见洞察）
 - `references/research-report.md` 等 7 个模板 — 确定输出类型后
-- `standards/` 下的规范 — 需要时
+- `references/routing-decision.md` — **skill 启动时**（决定走哪个模板的决策树）
+- `references/triggers-en.md` — **英文用户**（英文触发词 + 模糊场景判定）
+- `standards/run-summary-template.md` — **每次完成调研后**（生成 `workspace/run-summary.json` 复盘）
+- `standards/material-naming.md` + `standards/update-workflow.md` — 素材归档/报告更新时
+- `standards/state-recovery.md` — **中途中断 / WebFetch 失败 / 用户离开**时（写 `workspace/{product}/state.md` 用于 resume）
+- `standards/playwright-guide.md` — **4 类必测场景**（定价/登录/核心功能/404）时用 Playwright MCP
+- `standards/verify-citations-guide.md` — **报告生成后 / 发布前**（跑 `scripts/verify_citations.py` 检查 [N] 编号和 URL 可达性）
+- `standards/depth-config.md` — **用户指定档位时**（--depth 1/2/3 控制行数和章节数）
 
 ### 上下文重置后
 仅重新加载：
@@ -54,15 +62,31 @@ metadata:
 
 ## 触发场景
 
-| 场景 | 触发词 | 输出文件 |
-|------|-------|---------|
-| 产品调研报告 | "调研产品"、"写报告"、"深度分析" | 11 章标准报告 |
-| 产品评测文章 | "写文章"、"评测"、"体验" | 8 节体验文章 |
-| 开源项目文档 | "写 README"、"开源文档" | 7 章技术文档 |
-| Skill/MCP 文档 | "写 Skill"、"MCP 文档" | 6 章开发文档 |
-| 竞品对比分析 | "对比"、"横评" | 6 章对比报告 |
-| 行业分析报告 | "行业分析"、"赛道" | 8 章分析报告 |
-| 产品简报 | "简报"、"速览" | 5 节简报 |
+| 场景 | 触发词 | 输出文件 | 模板 |
+|------|-------|---------|------|
+| 产品调研报告 | "调研产品"、"写报告"、"深度分析" | 11 章标准报告 | `research-report.md` |
+| 产品评测文章 | "写文章"、"评测"、"体验" | 8 节体验文章 | `product-article.md` |
+| **开源项目文档** | "写 README"、"开源文档" | 7 章技术文档 | `opensource-docs.md` |
+| **Skill/MCP 文档** | "写 Skill"、"MCP 文档" | 6 章开发文档 | `skill-mcp-docs.md` |
+| 竞品对比分析 | "对比"、"横评" | 6 章对比报告 | `competitive-analysis.md` |
+| **行业分析报告** | "行业分析"、"赛道" | 8 章分析报告 | `industry-analysis.md` |
+| **产品简报** | "简报"、"速览" | 5 节简报 | `product-brief.md` |
+
+> 默认走**产品调研报告**。其他 6 个场景用对应触发词自动匹配模板（v1.4.1 起明确）。
+
+## 自动化原则（v1.4.0+）
+
+**Skill 调用后不主动询问**，按流程一气呵成到出报告：
+- 默认 B 档（同事传阅，800-1000 行）
+- 默认全选 4 类来源（12-15 条，官方源 ≥ 50%）
+- 默认 11 章模板（产品调研报告）
+
+**用户显式指定**（任何一项都覆盖默认）：
+- 档位：`A 档` / `C 档`
+- 选源：`跳过竞品` / `只要官方` / `补 URL：xxx`
+- 范围：`只写核心 3 章` / `加深度评测章`
+
+**报告头部标注**：实际档位 + 预估行数 + 已选源数——有偏差时下一轮用户调档。
 
 ## 工作流程
 
@@ -77,67 +101,91 @@ references/opensource-docs.md      # 开源文档
 references/skill-mcp-docs.md       # Skill/MCP
 references/competitive-analysis.md # 竞品对比
 references/industry-analysis.md    # 行业分析
-references/product-brief.md        # 简报
+references/product-brief.md        # 产品简报
 ```
 
 ### 2. 素材收集
 
-**核心原则：AI 自动找 + 用户确认**
+**核心原则：AI 自动找 + 默认全选 + 不主动询问**
 
-不要等用户提供 URL，主动用 WebSearch 搜索候选来源，整理后让用户确认。
+不要等用户提供 URL，主动用 WebSearch 搜索候选来源，整理后**直接抓取**（v1.4.0 自动化）。**默认至少 20 条来源**（4 基础类 + 4 扩展类，每类 2-5 个候选）。
 
 #### 2.1 自动搜索候选来源
 
-使用 WebSearch 搜索 4 类来源，每类 2-4 个候选：
+使用 WebSearch 搜索 **8 类来源**（4 基础 + 4 扩展），每类 2-5 个候选：
 
-| 类别 | 搜索关键词示例 | 目标 |
-|------|--------------|------|
-| **官方来源** | `{product} 官网`、`{product} docs`、`{product} pricing` | 官网、文档、定价页 |
-| **评测文章** | `{product} 评测`、`{product} review`、`{product} 体验` | 知乎、36kr、TechCrunch |
-| **竞品对比** | `{product} vs {competitor}`、`{product} alternatives` | 对比文章 |
-| **行业背景** | `{product} 融资`、`{product} funding`、`{company} 新闻` | 融资新闻、市场分析 |
+| 类别 | 类型 | 搜索关键词示例 | 目标 |
+|------|------|--------------|------|
+| **官方来源** | 基础 | `{product} 官网`、`{product} docs`、`{product} pricing` | 官网、文档、定价页 |
+| **评测文章** | 基础 | `{product} 评测`、`{product} review`、`{product} 体验` | 知乎、36kr、TechCrunch |
+| **竞品对比** | 基础 | `{product} vs {competitor}`、`{product} alternatives` | 对比文章 |
+| **行业背景** | 基础 | `{product} 融资`、`{product} funding`、`{company} 新闻` | 融资新闻、市场分析 |
+| **技术架构** | 扩展 | `{product} architecture`、`{product} github`、`{product} source code` | GitHub、技术博客、StackOverflow |
+| **用户社区** | 扩展 | `{product} reddit`、`{product} hacker news`、`{product} 用户讨论` | 真实用户反馈 |
+| **媒体深度** | 扩展 | `{product} deep dive`、`{product} 深度报道` | The Verge、36氪深度长文 |
+| **学术/标准** | 扩展 | `{product} 论文`、`{product} specification`、`{product} RFC` | 学术论文、技术规范 |
+
+**目标总数**：20-30 条（默认 ≥ 20 条）
+
+**官方源占比**：≥ 50%（规则 4 第 3 条）
+
+**独立第三方**：≥ 3 条
 
 #### 2.2 整理候选来源列表
 
 搜索完成后，整理成结构化列表给用户确认：
 
 ```
-找到 12 个候选来源，分 4 类：
+找到 N 个候选来源，分 8 类（4 基础 + 4 扩展）：
 
-【官方来源】(3个)
+【官方来源】(N1)
 1. 官网首页 - https://xxx.com
 2. 官方文档 - https://docs.xxx.com
 3. 定价页面 - https://xxx.com/pricing
+4. GitHub README - https://github.com/...
 
-【评测文章】(4个)
-4. 知乎评测 - https://zhuanlan.zhihu.com/...
-5. 36kr 报道 - https://36kr.com/...
-6. TechCrunch - https://techcrunch.com/...
-7. YouTube 评测 - https://youtube.com/...
+【评测文章】(N2)
+...
 
-【竞品对比】(3个)
-8. vs Synthesia - https://...
-9. vs D-ID - https://...
-10. 横评文章 - https://...
+【竞品对比】(N3)
+...
 
-【行业背景】(2个)
-11. 融资新闻 - https://...
-12. 市场分析 - https://...
+【行业背景】(N4)
+...
 
-建议全选，还是想跳过某些类别？
+【技术架构】(N5)
+...
+
+【用户社区】(N6)
+...
+
+【媒体深度】(N7)
+...
+
+【学术/标准】(N8)
+...
+
+（v1.4.0 默认全选，不再询问；如需跳过显式说"跳过 X 类"）
 ```
 
-#### 2.3 用户确认
+#### 2.3 自动化选源（默认全选 + 用户可显式指定）
 
-等待用户选择：
-- **全选**：抓取所有候选来源
-- **跳过某些类别**：如"跳过竞品对比"
-- **只选官方的**：只抓取官方来源
-- **补充指定 URL**：用户额外提供 URL
+**默认行为**：自动搜索 4 类来源后，**直接全选抓取**——不再中途询问"全选吗 / 跳哪些 / 只选官方的"。Skill 跑完的标志之一是"用户调用后一气呵成到出报告"。
+
+**用户可在调用时显式指定**（覆盖默认）：
+- "跳过竞品对比" / "只要官方源" / "补 URL：xxx"
+- "A 档" / "C 档"（覆盖默认 B 档）
+- 任何明确指令都优先于默认
+
+**不指定时按规则 4 选源**：
+- 官方源 ≥ 50%
+- 独立第三方 ≥ 3 条
+- 总数 **20-30 条**（默认 ≥ 20）
+- 8 类至少覆盖 5 类（基础 4 类全覆盖，扩展 4 类至少 1 类）
 
 #### 2.4 执行抓取
 
-用户确认后，使用 `baoyu-url-to-markdown` 批量抓取：
+按用户显式指令或默认（§2.3）抓取，使用 `baoyu-url-to-markdown` 批量抓取：
 
 ```bash
 npx @baoyu/url-to-markdown <url> --output ./workspace/
@@ -249,11 +297,15 @@ npx @baoyu/url-to-markdown <url> --output ./workspace/
 
 ##### 2.6.5 综合写入报告
 
-从笔记综合写入报告，标注所有来源。输出前过一遍 `standards/quality-gates.md` 快速自检。
+从笔记综合写入报告。**所有外部来源用 `> 来源：xxx` 引用块标注**，不再使用 `[N]` 内联编号（v1.6.1+ 规则）。输出前过一遍 `standards/quality-gates.md` 快速自检。
 
 ### 3. 生成报告
 
 > **参考**：`references/report-assembly.md`（报告组装指南）
+
+**中断恢复**（见 `standards/state-recovery.md`）：
+- 抓取失败 / 用户离开 / 写到 50%+ 暂停 → 必须写 `workspace/{product}/state.md` 记录进度
+- 用户说"继续 X" / "回到 X" → 读 state.md，跳到断点
 
 按模板结构生成初稿。
 
@@ -284,6 +336,7 @@ npx @baoyu/url-to-markdown <url> --output ./workspace/
 - ❌ `> v1.4 重要事实修正：之前写错了...` 这种元叙述
 - ❌ `> 待核实：...`（除非最后真的有未解项）
 - ❌ `> 这版新增：...` 这类预告
+- ❌ 工具/过程/方法说明（如 `本次 WebFetch 12/12 失败`、`调研方法：先搜 A 再搜 B`）——挪到末尾 changelog 或附录
 
 **允许**：
 - ✅ `> 来源：[1] GitHub README`
@@ -304,13 +357,17 @@ npx @baoyu/url-to-markdown <url> --output ./workspace/
 **所有模板统一**：
 - 禁止 `我认为`、`我觉得`、`我试了发现...` 等主观情绪词（除评测/文档模板外）
 - 作者判断可以保留，但必须显式标注 `**分析**：` 或 `**判断**：` 分隔事实
-- 调研/简报中所有数据必须有 `[N]` 引用
+- 调研/简报中所有关键数据用 `> 来源：xxx` 引用块标注（v1.6.1+ 规则，正文不再使用 `[N]` 内联数字引用）
 
 #### 规则 3：密度自检与档位选择
 
 **单章阈值**：单章超过 200 行 → 拆表、拆子章节，或挪到附录。**不要把内容堆到一章里**。
 
-**报告总长度阈值**：报告草稿完成 80% 时估算总行数，按"读者角色"选档位：
+**子小节红线**：
+- 单章内子小节 ≤ 4 个（§X.1 / §X.2 / §X.3 / §X.4 封顶）——超出就合并或挪附录
+- 每个子小节必须对读者独立有价值——只服务作者的过程段（"调研方法"、"工具受限"、"主观判断边界"这类）直接删，必要时挪末尾 changelog
+
+**报告总长度阈值**：默认 B 档，**不在中途询问**。如需 A/C 档，用户在调用时显式说明。
 
 | 档位 | 读者 | 行数 | 包含内容 |
 |-----|-----|----:|---------|
@@ -318,7 +375,85 @@ npx @baoyu/url-to-markdown <url> --output ./workspace/
 | **B 档（默认）** | 同事传阅 | 800-1000 | 核心+关键证据+对比表，省略案例细节 |
 | **C 档** | 公开发表 | 1500+ | 完整论述+多源交叉验证+局限说明 |
 
-**强制询问时机**：默认走 B 档。**写完 80% 时主动问一次**——给出当前行数和档位建议，让用户选 A/B/C，不要等写完 1500+ 行才问。
+**自动化原则**：报告**不主动询问档位**——写完时在报告头部标注实际档位 + 预估行数即可。如有偏差，用户下一轮调档。
+
+#### 规则 4：附录型章节 4 件套
+
+**触发场景**：章节名匹配以下任一模式时强制套用——
+- `参考来源` / `References` / `引用列表` / `资料来源`
+- `调研方法` / `工具清单` / `数据说明` / `局限性` / `时效性`
+
+**4 条规范**：
+
+| # | 规范 | 反例 |
+|---|------|------|
+| 1 | **列结构**：`#` / `来源` / `类型` 三列打底，可选加 `链接` | 加 Aut/Rec/Rel/Dep 均分；或只写"参考 GitHub README"这种无结构描述 |
+| 2 | **必须带链接**：每个非页码引用都附 `<url>`，使用 `<https://...>` 自动链接形式 | 留 5 条只有标题没 URL，读者要重新搜 |
+| 3 | **链接类型分布**：官方源 ≥ 50%（≥ 10 条/20 条），独立第三方 ≥ 3 条 | 全是商业博客或全是中文教程 |
+| 4 | **截断说明**：末尾必须注明"数据截止日期 + 下次更新触发条件" | 读者无法判断时效 |
+
+**目的**：附录型章节是"低密度 + 高链接 + 短说明"模式——读者扫一眼能验证、能跳转、能判断新旧，不做内容深度解读。
+
+---
+
+#### 规则 5：来源标注方式（v1.6.1+ 强制规则）
+
+**正文不再使用 `[N]` 内联数字引用**——影响阅读流畅度。所有外部来源改用引用块格式，紧跟事实段落或表格之后。
+
+**统一格式**：
+
+```markdown
+> 来源：{来源名 1} | {来源名 2} | ...（多个用 `|` 分隔）
+```
+
+**示例 1：单源标注**
+
+```markdown
+drawio 2026-01 发布的 v26.0.7 是当前稳定版。
+
+> 来源：drawio GitHub Releases（2026-01）
+```
+
+**示例 2：多源交叉**
+
+```markdown
+CVE-2024-31457 影响 pre-21.6.0 所有版本，2024 年修复。
+
+> 来源：NVD CVE-2024-31457 | GitHub Security Advisory GHSA-3qgw-fc79-4vxm
+```
+
+**示例 3：表格后批量标注**
+
+```markdown
+| 维度 | drawio | Lucidchart |
+|------|--------|------------|
+| 定价 | 免费 | $7.95/月起 |
+| 协作 | 弱 | 强 |
+
+> 来源：G2 对比页 | CMSWire 终极对比 | GetApp 对比
+```
+
+**示例 4：冲突标注**
+
+```markdown
+商业版定价 $1,950/年/25 用户（多源交叉估计值，drawio 官方"联系销售"未公开）。
+
+> 来源：drawio 商业 app 站 | G2 对比 | CMSWire 终极对比
+> ⚠️ 冲突提示：drawio 官方未公开正式报价，$1,950 是基于评测文章交叉估计
+```
+
+**规则要点**：
+- 引用块紧跟**事实段或表格之后**，不放在段落中间
+- 多个来源用 ` | ` 分隔，不写编号
+- 末尾"数据来源 / 参考来源"区只放**完整链接清单**，**不重复正文已标注的来源名**
+- 适用范围：所有 5 类输出（调研报告 / 公众号文章 / 竞品对比 / 行业分析 / 产品简报）
+- 例外：开箱即用项目文档（opensource-docs）允许内联 `[N]`，因为读者预期技术文档格式
+
+**为什么不沿用 `[N]`**：
+- 调研报告正文中出现 5-10 个 `[1][2][3]` 是常态，严重打断阅读
+- 公众号读者不熟悉学术引用规范
+- `> 来源：xxx` 格式更接近中文报告习惯，引用块视觉上也更清晰
+- 末尾参考来源仍提供完整链接和类型标注，可追溯性不损失
 
 ---
 
@@ -342,10 +477,8 @@ npx @baoyu/url-to-markdown <url> --output ./workspace/
 - [ ] 来源评分 ≥ 7 吗？（核心数据）
 - [ ] 文件命名对吗？
 - [ ] 素材归档了吗？
-- [ ] 用了 v1.x 修正类元标记吗？（用了就删，正文不该有）
-- [ ] 调研/简报模板里出现 "我" 视角吗？（出现就改成第三人称）
-- [ ] 单章超过 200 行了吗？（拆）
-- [ ] 报告总长偏离档位目标 ±30% 了吗？（询问用户是否需要瘦身）
+- [ ] 附录章节有 4 维规范吗？（列结构 + 必带链接 + 链接类型分布 + 截断说明）
+- [ ] 每个子小节都对读者独立有价值吗？（过程段、工具受限、主观边界类是否已挪出）
 
 #### 5.2 五道门控（完整报告/分析时）
 
@@ -396,13 +529,31 @@ workspace/
 | 工具 | 用途 |
 |------|------|
 | `baoyu-url-to-markdown` | 网页转 markdown |
-| Playwright MCP | 浏览器实测 |
+| Playwright MCP | 浏览器实测（4 类必测场景见 `standards/playwright-guide.md`）|
 | `WebSearch` | 深度调研 |
 | `WebFetch` | 简单网页抓取 |
 | `gh` CLI | GitHub 仓库信息 |
+| `scripts/conflict_detector.py` | 数字冲突自动检测 |
+| `scripts/quality_gate.py` | 5 道门禁自动评分（≥ 80 通过）|
+| `scripts/verify_citations.py` | 引用编号 + URL 可达性验证 |
 
 ## 参考
 
-- `references/` - 7 类输出模板
-- `standards/` - 素材规范、质量检查、更新流程
+- `references/` - 7 类输出模板 + 路由决策 + 英文触发词
+- `standards/` - 素材规范、质量检查、更新流程、状态恢复、浏览器实测、引用验证、深度档位
+- `scripts/` - 3 个自动化工具（冲突检测 / 质量门禁 / 引用验证）
+- `evals/` - 3 个 fixture + rubric + baseline 跑分
 - `methodology.md` - 完整方法论说明
+
+## 修订记录
+
+| 版本 | 日期 | 变更 |
+|---|---|---|
+| 1.3.0 | 2026-07-29 | 新增 §3.5 写作风格基线 3 条规则：changelog 末尾化、人称分流、密度档位自检 |
+| 1.3.1 | 2026-07-29 | 补丁：§3.5 规则 1 加"过程段禁入正文"；规则 3 加"子小节红线"；新增规则 4"附录型章节 4 件套"；§5.1 同步 2 条自检项 |
+| 1.4.0 | 2026-07-29 | 自动化原则：去掉 §2.3 用户确认环节（默认全选）+ 去掉 §3.5 规则 3 的"80% 询问时机"（默认 B 档）；新增"自动化原则"小节说明显式指定规则 |
+| 1.4.1 | 2026-07-29 | 来源扩量：4 类 → 8 类（+技术架构/用户社区/媒体深度/学术标准），默认 ≥ 20 条；按需加载补 3 个孤儿（tension-discovery / registry / run-summary）；research-report 模板加档位 meta header |
+| 1.5.0 | 2026-07-29 | 模板对齐：触发场景表加 4 列（场景/触发词/输出/模板），明确 7 个模板各自适用场景；quality-gates 末尾"快速自检清单"去重（指向 quality-checklist.md） |
+| 1.5.1 | 2026-07-29 | 6 个模板（product-article / competitive-analysis / opensource-docs / skill-mcp-docs / industry-analysis / product-brief）都加档位 meta header；material-naming 统一两种风格（无编号 / 带数字编号）都接受；SKILL.md 明确 methodology.md 是入门概览不入运行时上下文 |
+| 1.6.0 | 2026-07-29 | 9 项优化：eval 套件（fixtures/rubic/baseline）+ 3 个自动化脚本（conflict_detector / quality_gate / verify_citations）+ 4 篇新标准（state-recovery / playwright-guide / verify-citations-guide / depth-config）+ 2 个新引用（routing-decision / triggers-en）；baseline 跑分 74.7/100 |
+| 1.6.1 | 2026-07-30 | **来源标注方式变更**：正文弃用 `[N]` 内联数字引用，改用 `> 来源：xxx` 引用块紧跟事实段/表格（§3.5 规则 5）。适用范围：全部 5 类输出（调研报告/公众号/竞品对比/行业分析/产品简报）；例外：opensource-docs 允许保留内联引用。drawio 报告（v1.6.0 输出）不追溯重写 |

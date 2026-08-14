@@ -93,21 +93,27 @@ Outlook邮箱 / 免费邮箱 / 教育邮箱 / 临时邮箱 / 在线工具 / 学�
 ```bash
 python scripts/infer_from_url.py <url> [...]                  # 给 URL 出建议
 python scripts/infer_from_url.py <xlsx> --enrich [--changed]  # 给表批量出建议清单
+python scripts/infer_from_url.py <url> --table                # 额外给出"应进哪张表"建议
+python scripts/infer_from_url.py <url> --online               # 兜底时联网抓 <title> 作证据
 ```
 
 - 优先级：内置知名平台规则 → 从库学习（`域名→网站类型/类别` 多数派）→ 兜底 `官网·工具`
 - 内置规则的类型值**全部取自库中已有词汇**，不造新词；学习随库更新自动跟随
 - **定位是"建议起点"**：推断是域名级粗粒度，人工整理是行级细粒度（同是 `github.com`，Skill仓库/工具仓库/MCP仓库不同），最终值由人工/LLM 确认
+- `--table` 用库中学到的 `域名→表` 多数派给出"新增书签应进哪张表"建议（如 github.com → GitHub书签汇总.xlsx），只在库中见过该域名时才建议
+- `--online` 只对"兜底"来源的 URL 发起请求抓 `<title>`/`og:title` 作证据（不强行下结论，来源标 `兜底·title:xx`）；默认离线快，无网络请求
 
 ### 8.2 浏览器书签导入 `import_html.py`
 
 ```bash
-python scripts/import_html.py <bookmarks.html> [--infer [--dir 库目录]]
+python scripts/import_html.py <bookmarks.html> [--infer [--dir 库目录]]  # HTML 书签
+python scripts/import_html.py <urls.txt> --infer                          # 纯 URL 清单
 ```
 
 - 解析 Chrome/Edge/Firefox 导出的 Netscape bookmark HTML，按文件夹层级分组输出待入库清单
-- `--infer` 时每条附 网站类型/类别 建议；**不写表**，确认后走正常新增流程
-- 输出的"可参照表"提示供 LLM 判断分到哪张表
+- 也支持**纯 URL 文本**（每行一个 URL，或用 `名称 || URL` 带上名称）——适合手头只有一批链接时
+- `--infer` 时每条附 网站类型/类别 + 建议表（进哪张表）；**不写表**，确认后走正常新增流程
+- `--online` 透传给推断引擎；输出的"可参照表"提示供 LLM 判断分到哪张表
 
 ### 8.3 全库统计报告 `report_summary.py`
 

@@ -72,8 +72,10 @@ python scripts/cross_table_check.py [目录]
 
 ```bash
 python scripts/infer_from_url.py <url> [...];        # URL → 网站类型/类别 建议（内置规则+库学习）
+python scripts/infer_from_url.py <url> --table       # 额外建议"进哪张表"（域名→表 库学习）
+python scripts/infer_from_url.py <url> --online      # 兜底时联网抓 title 作证据
 python scripts/infer_from_url.py <xlsx> --enrich     # 给表批量出建议清单
-python scripts/import_html.py <bookmarks.html> --infer  # 浏览器书签导入为待入库清单
+python scripts/import_html.py <bookmarks.html|urls.txt> --infer  # 书签 HTML 或纯 URL 清单 → 待入库清单
 python scripts/report_summary.py --dir . --out report.md  # 全库统计报告
 python scripts/check_urls.py <xlsx> [--skip 域名]     # URL 健康检查（需联网）
 python scripts/dedup_report.py <xlsx> --suggest      # 归一化后重复候选组
@@ -81,9 +83,10 @@ python scripts/dedup_report.py <xlsx> --suggest      # 归一化后重复候选�
 
 要点：
 
-- **推断是建议起点**：域名级粗粒度，行级细粒度仍需人工/LLM 确认
-- **导入不写表**：输出清单，确认后走新增流程
-- **健康检查会真实发请求**：全库需 `--limit`，防爬站点 `--skip`
+- **推断是建议起点**：域名级粗粒度，行级细粒度仍需人工/LLM 确认；`--table` 只在库中见过该域名时才建议进哪张表
+- **导入不写表**：输出清单（含建议表），确认后走新增流程；纯 URL 文本每行一个 URL，或 `名称 || URL`
+- **健康检查会真实发请求**：全库需 `--limit`，防爬站点 `--skip`；`--online` 同样发请求，仅对兜底 URL
+- 新增书签半自动流程：URL → `infer --table` 分表 → 用该表词汇补类别/类型/定位 → 追加到表尾 → `verify_table` 验证
 
 ## 关键规则（速查）
 
@@ -99,8 +102,8 @@ python scripts/dedup_report.py <xlsx> --suggest      # 归一化后重复候选�
 - `scripts/sort_table.py` — 类别优先排序 + 重编号
 - `scripts/dedup_report.py` — 重复项报告（--suggest 归一化候选）/ 确认删除
 - `scripts/cross_table_check.py` — 跨表一致性检查
-- `scripts/infer_from_url.py` — URL → 网站类型/类别 推断（内置规则+库学习）
-- `scripts/import_html.py` — 浏览器书签 HTML 导入为待入库清单（可带推断）
+- `scripts/infer_from_url.py` — URL → 网站类型/类别 推断（内置规则+库学习）+ `--table` 分表建议 + `--online` 联网证据
+- `scripts/import_html.py` — 书签 HTML 或纯 URL .txt 导入为待入库清单（可带推断 + 建议表）
 - `scripts/report_summary.py` — 全库统计报告（规模/概况/重复/失效/低频词汇）
 - `scripts/check_urls.py` — URL 健康检查（需联网，HEAD 优先）
 - `references/rules.md` — 完整规范（表格结构 / 类型细分 / 名称引用 / 验证指标 / 排序 / 去重 / 跨表 / 自动辅助脚本）

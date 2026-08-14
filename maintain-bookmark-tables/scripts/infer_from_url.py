@@ -101,7 +101,7 @@ def normalize_host(url):
 class InferEngine:
     """内置规则 + 库学习 的推断器。"""
 
-    def __init__(self, directory='.'):
+    def __init__(self, directory='.', online=False):
         # 内置规则: 精确域名 / 后缀 -> (类型, 类别)，后缀按长度降序
         self.exact = {}     # host -> (type, cat)
         self.suffix = []    # [(suffix, type, cat)] 后缀以 '.' 开头
@@ -113,6 +113,10 @@ class InferEngine:
         self.suffix.sort(key=lambda x: -len(x[0]))
         # 库学习: domain -> (类型Counter, 类别Counter)
         self.learn = defaultdict(lambda: (Counter(), Counter()))
+        # 表学习: domain -> Counter(表完整文件名)，用于 suggest_table（新增书签进哪张表）
+        self.table_learn = defaultdict(Counter)
+        # online: 兜底时联网抓 <title> 作为证据（可选，默认离线快）
+        self.online = online
         self.load_library(directory)
 
     def load_library(self, directory):
@@ -124,6 +128,7 @@ class InferEngine:
         files = sorted(p for p in glob.glob(os.path.join(directory, '*书签汇总.xlsx'))
                        if not os.path.basename(p).startswith('~$'))
         for f in files:
+            label = os.path.basename(f)  # 表完整文件名，如 AI图片书签汇总.xlsx
             try:
                 wb = openpyxl.load_workbook(f, read_only=True)
                 ws = wb.active
@@ -138,6 +143,7 @@ class InferEngine:
                         self.learn[host][0][str(typ).strip()] += 1
                     if cat:
                         self.learn[host][1][str(cat).strip()] += 1
+                    self.table_learn[host][label] += 1
                 wb.close()
             except Exception:
                 continue
@@ -182,8 +188,67 @@ class InferEngine:
         if learned:
             typ, cat = learned
             return (typ, cat, '库学习')
-        # 3. 兜底
+        # 3. 兜底（--online 时联网抓 <title> 作证据，不强行下结论）
+        if self.online:
+            title = self._fetch_title(url)
+            if title:
+                return (FALLBACK_TYPE, '', f'兜底·title:{title[:40]}')
         return (FALLBACK_TYPE, '', '兜底')
+
+    def suggest_table(self, url):
+        """返回 (建议表完整文件名, 依据条数) 或 (None, 0)。基于库中 域名->表 多数派。"""
+        host = normalize_host(url)
+        if not host or not self.table_learn:
+            return (None, 0)
+        keys = [host] + [s for s in self.table_learn
+                         if s.startswith('.') and host.endswith(s)]
+        keys = sorted(keys, key=len, reverse=True)
+        for k in keys:
+            if k not in self.table_learn:
+                continue
+            cnt = self.table_learn[k]
+            if cnt:
+                table, n = cnt.most_common(1)[0]
+                return (table, n)
+        return (None, 0)
+
+    @staticmethod
+    def _fetch_title(url):
+        """GET 抓 <title> 或 meta og:title 作为兜底证据；失败返回 ''。"""
+        import urllib.request
+        import re
+        try:
+            req = urllib.request.Request(
+                url, headers={'User-Agent': 'Mozilla/5.0 infer_from_url'},
+                method='GET')
+            with urllib.request.urlopen(req, timeout=6) as resp:
+                raw = resp.read(8192)
+                ct = resp.headers.get('Content-Type', '')
+                m = re.search(r'charset=([\w-]+)', ct)
+                charset = m.group(1) if m else None
+        except Exception:
+            return ''
+        for enc in ([charset] if charset else []) + ['utf-8', 'gbk']:
+            try:
+                html = raw.decode(enc)
+                break
+            except (UnicodeDecodeError, LookupError):
+                continue
+        else:
+            html = raw.decode('utf-8', errors='replace')
+        m = re.search(r'<title[^>]*>(.*?)</title>', html, re.I | re.S)
+        if m:
+            return re.sub(r'\s+', ' ', m.group(1)).strip()
+        m = re.search(
+            r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\']([^"\']*)["\']',
+            html, re.I)
+        if not m:
+            m = re.search(
+                r'<meta[^>]+content=["\']([^"\']*)["\'][^>]+property=["\']og:title["\']',
+                html, re.I)
+        if m:
+            return m.group(1).strip()
+        return ''
 
 
 def main(argv):
@@ -192,11 +257,13 @@ def main(argv):
     ap.add_argument('inputs', nargs='*', help='URL 或 xlsx 表路径')
     ap.add_argument('--enrich', action='store_true', help='表模式: 给表每行生成建议清单（不改表）')
     ap.add_argument('--changed', action='store_true', help='表模式: 只显示建议与当前不同的行')
+    ap.add_argument('--table', action='store_true', help='URL 模式: 额外给出"应进哪张表"建议')
+    ap.add_argument('--online', action='store_true', help='兜底时联网抓 <title> 作证据（默认离线）')
     ap.add_argument('--dir', default='.', help='书签库目录（学习用），默认当前目录')
     ap.add_argument('--selftest', action='store_true', help='内置自检')
     args = ap.parse_args(argv)
 
-    engine = InferEngine(args.dir)
+    engine = InferEngine(args.dir, online=args.online)
 
     if args.selftest:
         cases = [
@@ -247,7 +314,13 @@ def main(argv):
     # URL 模式
     for url in args.inputs:
         typ, cat, src = engine.infer(url)
-        print(f'{url}\n  网站类型: {typ}\n  类别: {cat or "（待定）"}\n  来源: {src}\n')
+        print(f'{url}\n  网站类型: {typ}\n  类别: {cat or "（待定）"}\n  来源: {src}')
+        if args.table:
+            table, n = engine.suggest_table(url)
+            ttxt = table if table else '（库中未见此域名）'
+            ttxt += f'（{n} 条依据）' if n else ''
+            print(f'  建议表: {ttxt}')
+        print()
     return 0
 
 

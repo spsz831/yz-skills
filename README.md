@@ -76,6 +76,21 @@ AI 日报 / 公众号稿 / 插图规划 / 定稿发布链路 skill。
 
 - [product-research](./product-research/)
 
+### `maintain-bookmark-tables`
+
+书签汇总表维护 skill。维护 `XX书签汇总.xlsx` 系列表格：补四列（类别/网站类型/功能定位/备注）、类别优先排序、五指标验证、去重清理、跨表一致性检查。
+
+适用场景：
+
+- 新增 / 编辑书签行，补齐 9 列规范
+- 优化现有表（补四列 + 类别排序 + 重编号）
+- 验证表格是否通过五指标（空值 / 笼统类型 / 旧式引用 / 断档 / 悬空，全 0 才算通过）
+- 去重清理（真重复可删、同源子页保留）与跨表一致性检查
+
+目录：
+
+- [maintain-bookmark-tables](./maintain-bookmark-tables/)
+
 ## 当前仓库结构
 
 ```text
@@ -88,7 +103,8 @@ yz-skills/
 ├─ zhen-fmt/
 ├─ ai-daily-digest/
 ├─ ai-daily-digest-docs/
-└─ product-research/
+├─ product-research/
+└─ maintain-bookmark-tables/
 ```
 
 ## 目录约定

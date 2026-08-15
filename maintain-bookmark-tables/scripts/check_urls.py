@@ -21,11 +21,24 @@ from urllib.parse import urlparse
 from collections import defaultdict
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+try:
+    from config import HTTP_TIMEOUT, HTTP_WORKERS, HTTP_UA, TABLE_GLOB, COLUMN_COUNT, COLUMNS
+except ImportError:
+    HTTP_TIMEOUT = 8
+    HTTP_WORKERS = 8
+    HTTP_UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+               '(KHTML, like Gecko) Chrome/126.0 Safari/537.36')
+    TABLE_GLOB = '*书签汇总.xlsx'
+    COLUMN_COUNT = 9
+    COLUMNS = {'序号': 0, '名称': 1, 'URL': 2, '类别': 3, '网站类型': 4,
+               '功能定位': 5, '是否重复': 6, '备注': 7, '添加日期': 8}
 
-TIMEOUT = 8
-WORKERS = 8
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' \
-     '(KHTML, like Gecko) Chrome/126.0 Safari/537.36'
+TIMEOUT = HTTP_TIMEOUT
+WORKERS = HTTP_WORKERS
+UA = HTTP_UA
+
+I_NAME = COLUMNS.get('名称', 1)
+I_URL = COLUMNS.get('URL', 2)
 
 
 def skip_host(host, skip_set):
@@ -80,10 +93,10 @@ def load_entries(path):
     ws = wb.active
     out = []
     for r in range(2, ws.max_row + 1):
-        name = ws.cell(r, 2).value
+        name = ws.cell(r, I_NAME + 1).value
         if name is None:
             continue
-        url = str(ws.cell(r, 3).value or '').strip()
+        url = str(ws.cell(r, I_URL + 1).value or '').strip()
         out.append((r, name, url))
     wb.close()
     return out
@@ -114,7 +127,7 @@ def main(argv):
     files = list(args.xlsx)
     if not files:
         import glob
-        allf = sorted(p for p in glob.glob(os.path.join(args.dir, '*书签汇总.xlsx'))
+        allf = sorted(p for p in glob.glob(os.path.join(args.dir, TABLE_GLOB))
                       if not os.path.basename(p).startswith('~$'))
         if not args.limit:
             print('⚠️ 全库检查需指定 --limit（避免一次 1700+ 请求）。例如 --dir . --limit 100')

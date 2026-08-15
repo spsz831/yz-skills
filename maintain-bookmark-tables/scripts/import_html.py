@@ -18,6 +18,10 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+try:
+    from config import TABLE_GLOB
+except ImportError:
+    TABLE_GLOB = '*书签汇总.xlsx'
 
 
 class BookmarkParser(HTMLParser):
@@ -174,8 +178,8 @@ def main(argv):
         print()
 
     # 统计提示：哪些路径在现有库里可能找不到对应表
-    tables = {os.path.splitext(os.path.basename(f))[0].replace('书签汇总', '')
-              for f in glob.glob(os.path.join(args.dir, '*书签汇总.xlsx'))}
+    tables = {os.path.splitext(os.path.basename(f))[0]
+              for f in glob.glob(os.path.join(args.dir, TABLE_GLOB))}
     print('提示: 可参照现有表', ' / '.join(sorted(tables)) or '（当前目录未找到表）')
     return 0
 

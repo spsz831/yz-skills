@@ -21,6 +21,19 @@ import sys, io, argparse, openpyxl
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 from collections import Counter
 from urllib.parse import urlparse
+try:
+    from config import COLUMN_COUNT, COLUMNS, DUP_MARK, DUP_PREFIX
+except ImportError:
+    COLUMN_COUNT = 9
+    COLUMNS = {'序号': 0, '名称': 1, 'URL': 2, '类别': 3, '网站类型': 4,
+               '功能定位': 5, '是否重复': 6, '备注': 7, '添加日期': 8}
+    DUP_MARK = '是'
+    DUP_PREFIX = '重复：'
+
+I_NAME = COLUMNS.get('名称', 1)
+I_URL = COLUMNS.get('URL', 2)
+I_DUP = COLUMNS.get('是否重复', 6)
+I_NOTE = COLUMNS.get('备注', 7)
 
 
 def norm_url(url):
@@ -45,8 +58,8 @@ def load(path):
     ws = wb.active
     rows = []
     for r in range(2, ws.max_row + 1):
-        vals = [ws.cell(r, c).value for c in range(1, 10)]
-        if vals[1] is None:
+        vals = [ws.cell(r, c).value for c in range(1, COLUMN_COUNT + 1)]
+        if vals[I_NAME] is None:
             continue
         rows.append(vals)
     return wb, ws, rows
@@ -54,9 +67,9 @@ def load(path):
 
 def del_able(rows):
     """真重复行：备注以『重复：』开头，或表内归一化后同 URL 的多行。"""
-    norm_cnt = Counter(norm_url(str(r[2])) for r in rows if r[2])
-    return [r for r in rows if str(r[6]).strip() == '是' and (
-        str(r[7]).strip().startswith('重复：') or norm_cnt.get(norm_url(str(r[2])), 0) > 1)]
+    norm_cnt = Counter(norm_url(str(r[I_URL])) for r in rows if r[I_URL])
+    return [r for r in rows if str(r[I_DUP]).strip() == DUP_MARK and (
+        str(r[I_NOTE]).strip().startswith(DUP_PREFIX) or norm_cnt.get(norm_url(str(r[I_URL])), 0) > 1)]
 
 
 def main(argv):
@@ -68,19 +81,19 @@ def main(argv):
     args = ap.parse_args(argv)
 
     wb, ws, rows = load(args.xlsx)
-    dup = [r for r in rows if str(r[6]).strip() == '是']
+    dup = [r for r in rows if str(r[I_DUP]).strip() == DUP_MARK]
     if not dup:
         print(f'✅ {args.xlsx}: 无重复行')
     else:
         print(f'{args.xlsx}: {len(dup)} 条标记重复')
         for r in dup:
-            print(f'  序号{r[0]} | {r[1]} | {r[2]} | {r[7]}')
+            print(f'  序号{r[0]} | {r[I_NAME]} | {r[I_URL]} | {r[I_NOTE]}')
 
     # --suggest: 归一化后同 URL 的组，标出其中未标记"是"的候选
     if args.suggest:
         groups = {}
         for r in rows:
-            key = norm_url(str(r[2]))
+            key = norm_url(str(r[I_URL]))
             if not key:
                 continue
             groups.setdefault(key, []).append(r)
@@ -90,11 +103,11 @@ def main(argv):
             return 0
         print(f'\n归一化后同 URL 的候选组 {len(cand)} 组（未标"是"的可考虑标重复）:')
         for k, v in cand:
-            marked = sum(1 for r in v if str(r[6]).strip() == '是')
+            marked = sum(1 for r in v if str(r[I_DUP]).strip() == DUP_MARK)
             print(f'  [{k}] {len(v)} 条，已标{marked}条:')
             for r in v:
-                flag = '是' if str(r[6]).strip() == '是' else '否'
-                print(f'    序号{r[0]} | {str(r[1])[:30]} | {r[2]} | 重复={flag} | {r[7]}')
+                flag = DUP_MARK if str(r[I_DUP]).strip() == DUP_MARK else '否'
+                print(f'    序号{r[0]} | {str(r[I_NAME])[:30]} | {r[I_URL]} | 重复={flag} | {r[I_NOTE]}')
         return 0
 
     if not args.delete:
@@ -122,13 +135,13 @@ def main(argv):
     ws2 = wb2.active
     # 清空现有数据区
     for r in range(2, ws2.max_row + 1):
-        for c in range(1, 10):
+        for c in range(1, COLUMN_COUNT + 1):
             ws2.cell(r, c).value = None
     for i, row in enumerate(keep):
         rr = i + 2
-        for c in range(1, 10):
+        for c in range(1, COLUMN_COUNT + 1):
             ws2.cell(rr, c).value = row[c - 1]
-        ws2.cell(rr, 1).value = i + 1
+        ws2.cell(rr, COLUMNS.get('序号', 0) + 1).value = i + 1
     wb2.save(args.xlsx)
     print(f'已删除 {len(deletable)} 行真重复，保留 {len(keep)} 条')
     return 0

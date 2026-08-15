@@ -13,8 +13,24 @@ import argparse
 from collections import Counter, defaultdict
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+try:
+    from config import (REF_RE, TABLE_GLOB, COLUMN_COUNT, COLUMNS, DEAD_CATEGORY, DUP_MARK)
+except ImportError:
+    REF_RE = re.compile(r'同表『([^』]+)』')
+    TABLE_GLOB = '*书签汇总.xlsx'
+    COLUMN_COUNT = 9
+    COLUMNS = {'序号': 0, '名称': 1, 'URL': 2, '类别': 3, '网站类型': 4,
+               '功能定位': 5, '是否重复': 6, '备注': 7, '添加日期': 8}
+    DEAD_CATEGORY = '失效链接'
+    DUP_MARK = '是'
 
-REF_RE = re.compile(r'同表『([^』]+)』')
+I_NAME = COLUMNS.get('名称', 1)
+I_URL = COLUMNS.get('URL', 2)
+I_CAT = COLUMNS.get('类别', 3)
+I_TYPE = COLUMNS.get('网站类型', 4)
+I_DUP = COLUMNS.get('是否重复', 6)
+I_NOTE = COLUMNS.get('备注', 7)
+I_DATE = COLUMNS.get('添加日期', 8)
 
 
 def _clip(items, counter, limit=25):
@@ -32,8 +48,8 @@ def load_rows(path):
     ws = wb.active
     rows = []
     for r in range(2, ws.max_row + 1):
-        vals = [ws.cell(r, c).value for c in range(1, 10)]
-        if vals[1] is None:
+        vals = [ws.cell(r, c).value for c in range(1, COLUMN_COUNT + 1)]
+        if vals[I_NAME] is None:
             continue
         rows.append(vals)
     wb.close()
@@ -46,10 +62,10 @@ def main(argv):
     ap.add_argument('--out', default='', help='输出到文件（否则打印 stdout）')
     args = ap.parse_args(argv)
 
-    files = sorted(p for p in glob.glob(os.path.join(args.dir, '*书签汇总.xlsx'))
+    files = sorted(p for p in glob.glob(os.path.join(args.dir, TABLE_GLOB))
                    if not os.path.basename(p).startswith('~$'))
     if not files:
-        print(f'目录下未找到 *书签汇总.xlsx: {args.dir}')
+        print(f'目录下未找到 {TABLE_GLOB}: {args.dir}')
         return 1
 
     cat_counter = Counter()
@@ -63,25 +79,25 @@ def main(argv):
         rows = load_rows(f)
         all_rows[f] = rows
         name = os.path.basename(f)
-        dup = sum(1 for r in rows if str(r[6]).strip() == '是')
-        dates = [str(r[8]).strip() for r in rows if r[8]]
+        dup = sum(1 for r in rows if str(r[I_DUP]).strip() == DUP_MARK)
+        dates = [str(r[I_DATE]).strip() for r in rows if r[I_DATE]]
         dates.sort()
         earliest = dates[0] if dates else '-'
         latest = dates[-1] if dates else '-'
         table_info.append((name, len(rows), dup, earliest, latest))
         for r in rows:
-            cat = str(r[3]).strip() if r[3] else ''
-            typ = str(r[4]).strip() if r[4] else ''
-            url = str(r[2]).strip() if r[2] else ''
-            note = str(r[7]) if r[7] else ''
+            cat = str(r[I_CAT]).strip() if r[I_CAT] else ''
+            typ = str(r[I_TYPE]).strip() if r[I_TYPE] else ''
+            url = str(r[I_URL]).strip() if r[I_URL] else ''
+            note = str(r[I_NOTE]) if r[I_NOTE] else ''
             if cat:
                 cat_counter[cat] += 1
             if typ:
                 type_counter[typ] += 1
             if url:
-                url_owner[url].append((name, r[0], r[1]))
-            if cat == '失效链接' or '失效' in note:
-                dead_links.append((name, r[0], r[1], note[:40]))
+                url_owner[url].append((name, r[0], r[I_NAME]))
+            if cat == DEAD_CATEGORY or '失效' in note:
+                dead_links.append((name, r[0], r[I_NAME], note[:40]))
 
     total = sum(x[1] for x in table_info)
     dup_total = sum(x[2] for x in table_info)

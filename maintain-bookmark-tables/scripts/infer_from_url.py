@@ -21,70 +21,41 @@ from urllib.parse import urlparse
 
 # 注意: stdout 包装放在 main() 里执行，被其他脚本 import（如 import_html）时不重复包装
 
-# (后缀, 网站类型, 类别) —— 后缀带 '.' 表示子域名也匹配；类型值均来自库中已有词汇
-# 顺序越靠前优先级越高；精确域名优先于后缀，后缀按长度优先
-BUILTIN_RULES = [
-    # GitHub 系列
-    ('gist.github.com', 'GitHub·Gist', '代码分享'),
-    ('.github.io', 'GitHub·个人主页', '个人站点'),
-    ('github.com', 'GitHub·工具仓库', '开源工具'),
-    # 飞书 / 谷歌 / 微信 / 小红书 等平台
-    ('.feishu.cn', '飞书·云文档', '学习教程'),
-    ('.larkoffice.com', '飞书·云文档', '学习教程'),
-    ('docs.google.com', 'Google文档', '教程文档'),
-    ('chromewebstore.google.com', 'Chrome·插件', '浏览器插件'),
-    ('mp.weixin.qq.com', '微信·文章', '社区资讯'),
-    ('creator.xiaohongshu.com', '平台·创作后台', '自媒体'),
-    ('x.com', 'X·推文', '社交媒体'),
-    ('twitter.com', 'X·推文', '社交媒体'),
-    # 技能 / MCP 生态
-    ('skills.sh', '官网·技能市场', 'Skill'),
-    ('lobehub.com', '官网·平台', 'Skill市场'),
-    ('clawhub.ai', 'ClawHub·技能平台', 'Skill'),
-    ('modelscope.cn', 'ModelScope·模型库', '模型平台'),
-    ('huggingface.co', 'HuggingFace·模型页', '模型仓库'),
-    # 论坛社区
-    ('linux.do', '社区·论坛', '论坛社区'),
-    ('cdk.linux.do', '官网·CDK页', '论坛社区'),
-    # 文档 / 笔记
-    ('notion.so', 'Notion·官方', '文档笔记'),
-    ('yuque.com', '语雀·文档', '内容平台'),
-    # 教程视频
-    ('bilibili.com', '教程·B站视频', '教程文档'),
-    ('youtube.com', '油管·视频教程', '学习教程'),
-    ('zhuanlan.zhihu.com', '知乎·专栏', '学习教程'),
-    ('zhihu.com', '知乎·专栏', '学习教程'),
-    ('blog.csdn.net', 'CSDN·博客', '教程博客'),
-    ('csdn.net', 'CSDN·博客', '教程博客'),
-    # 云 / CDN / 部署
-    ('dash.cloudflare.com', 'CDN·Cloudflare', 'CDN/DNS'),
-    ('cloudflare.com', 'CDN·Cloudflare', 'CDN/DNS'),
-    ('railway.com', '部署平台·PaaS', '部署平台'),
-    ('vercel.app', '部署平台·静态托管', '部署平台'),
-    ('netlify.app', '部署平台·静态托管', '部署平台'),
-    # 本地
-    ('localhost', '本地·工具', '本地开发'),
-    ('127.0.0.1', '本地·工具', '本地开发'),
-    # 主流平台兜底
-    ('openai.com', '官网·平台', 'AI聊天'),
-    ('chatgpt.com', '官网·平台', 'AI聊天'),
-    ('anthropic.com', '官网·平台', 'AI聊天'),
-    ('google.com', '官网·搜索', '搜索工具'),
-    ('kaggle.com', 'Kaggle·教程', '学习教程'),
-    ('producthunt.com', 'ProductHunt·产品页', '社区平台'),
-    ('substack.com', 'Substack·博客', '个人博客'),
-    ('patreon.com', '官网·社区', '创作者'),
-    ('telegram.org', '官网·社区', '社区平台'),
-    ('discord.com', '官网·社区', '社区平台'),
-    ('notion.com', '官网·文档', '文档笔记'),
-    ('cloud.aliyun.com', '阿里·控制台', '官方平台'),
-    ('console.aliyun.com', '阿里·控制台', '官方平台'),
-    ('volcengine.com', '官网·活动页', '官方平台'),
-    ('weibo.com', '官网·社区', '社交媒体'),
-    ('douban.com', '豆瓣·小组', '社区平台'),
-]
+try:
+    from config import BUILTIN_RULES, FALLBACK_TYPE, TABLE_GLOB, COLUMN_COUNT, COLUMNS
+except ImportError:  # 单文件运行时内联默认
+    COLUMN_COUNT = 9
+    COLUMNS = {'序号': 0, '名称': 1, 'URL': 2, '类别': 3, '网站类型': 4,
+               '功能定位': 5, '是否重复': 6, '备注': 7, '添加日期': 8}
+    FALLBACK_TYPE = '官网·工具'
+    TABLE_GLOB = '*书签汇总.xlsx'
+    # 内置知名平台规则（config.py 中完整版，此处为兜底）
+    BUILTIN_RULES = [
+        ('gist.github.com', 'GitHub·Gist', '代码分享'),
+        ('.github.io', 'GitHub·个人主页', '个人站点'),
+        ('github.com', 'GitHub·工具仓库', '开源工具'),
+        ('.feishu.cn', '飞书·云文档', '学习教程'),
+        ('x.com', 'X·推文', '社交媒体'),
+        ('twitter.com', 'X·推文', '社交媒体'),
+        ('linux.do', '社区·论坛', '论坛社区'),
+        ('bilibili.com', '教程·B站视频', '教程文档'),
+        ('youtube.com', '油管·视频教程', '学习教程'),
+        ('zhihu.com', '知乎·专栏', '学习教程'),
+        ('csdn.net', 'CSDN·博客', '教程博客'),
+        ('localhost', '本地·工具', '本地开发'),
+        ('127.0.0.1', '本地·工具', '本地开发'),
+        ('openai.com', '官网·平台', 'AI聊天'),
+        ('chatgpt.com', '官网·平台', 'AI聊天'),
+        ('anthropic.com', '官网·平台', 'AI聊天'),
+        ('google.com', '官网·搜索', '搜索工具'),
+        ('vercel.app', '部署平台·静态托管', '部署平台'),
+        ('netlify.app', '部署平台·静态托管', '部署平台'),
+    ]
 
-FALLBACK_TYPE = '官网·工具'  # 库中最高频网站类型
+I_NAME = COLUMNS.get('名称', 1)
+I_URL = COLUMNS.get('URL', 2)
+I_CAT = COLUMNS.get('类别', 3)
+I_TYPE = COLUMNS.get('网站类型', 4)
 
 
 def normalize_host(url):
@@ -125,25 +96,25 @@ class InferEngine:
             import openpyxl
         except ImportError:
             return
-        files = sorted(p for p in glob.glob(os.path.join(directory, '*书签汇总.xlsx'))
+        files = sorted(p for p in glob.glob(os.path.join(directory, TABLE_GLOB))
                        if not os.path.basename(p).startswith('~$'))
         for f in files:
-            label = os.path.basename(f)  # 表完整文件名，如 AI图片书签汇总.xlsx
+            label = os.path.basename(f)  # 表完整文件名，如 AI书签汇总.xlsx（多 sheet 则按 sheet 归并）
             try:
                 wb = openpyxl.load_workbook(f, read_only=True)
-                ws = wb.active
-                for r in range(2, ws.max_row + 1):
-                    url = ws.cell(r, 3).value
-                    typ = ws.cell(r, 5).value
-                    cat = ws.cell(r, 4).value
-                    host = normalize_host(str(url)) if url else ''
-                    if not host:
-                        continue
-                    if typ:
-                        self.learn[host][0][str(typ).strip()] += 1
-                    if cat:
-                        self.learn[host][1][str(cat).strip()] += 1
-                    self.table_learn[host][label] += 1
+                for ws in wb.worksheets:  # 多 sheet 文件（如 AI书签汇总.xlsx）逐 sheet 学习
+                    for r in range(2, ws.max_row + 1):
+                        url = ws.cell(r, I_URL + 1).value
+                        typ = ws.cell(r, I_TYPE + 1).value
+                        cat = ws.cell(r, I_CAT + 1).value
+                        host = normalize_host(str(url)) if url else ''
+                        if not host:
+                            continue
+                        if typ:
+                            self.learn[host][0][str(typ).strip()] += 1
+                        if cat:
+                            self.learn[host][1][str(cat).strip()] += 1
+                        self.table_learn[host][label] += 1
                 wb.close()
             except Exception:
                 continue
@@ -299,15 +270,15 @@ def main(argv):
             print(f'\n== {os.path.basename(path)} ==')
             print(f'{"序号":<4}{"名称":<40}{"URL":<45}{"类型":<16}{"类别":<12}来源')
             for r in range(2, ws.max_row + 1):
-                name = ws.cell(r, 2).value
+                name = ws.cell(r, I_NAME + 1).value
                 if name is None:
                     continue
-                url = str(ws.cell(r, 3).value or '').strip()
-                cur_t, cur_c = ws.cell(r, 5).value, ws.cell(r, 4).value
+                url = str(ws.cell(r, I_URL + 1).value or '').strip()
+                cur_t, cur_c = ws.cell(r, I_TYPE + 1).value, ws.cell(r, I_CAT + 1).value
                 sug_t, sug_c, src = engine.infer(url)
                 if args.changed and sug_t == str(cur_t).strip() and sug_c == str(cur_c).strip():
                     continue
-                print(f'{str(ws.cell(r,1).value):<4}{str(name)[:38]:<40}{url[:43]:<45}{sug_t:<16}{sug_c:<12}{src}')
+                print(f'{str(ws.cell(r, 1).value):<4}{str(name)[:38]:<40}{url[:43]:<45}{sug_t:<16}{sug_c:<12}{src}')
             wb.close()
         return 0
 

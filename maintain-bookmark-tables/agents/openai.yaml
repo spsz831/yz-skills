@@ -1,4 +1,4 @@
 interface:
-  display_name: "书签汇总表维护"
-  short_description: "维护 XX书签汇总.xlsx：补四列、类别排序、验证、去重、跨表检查"
-  default_prompt: "Use $skill-name to organize and verify my bookmark summary tables (XX书签汇总.xlsx)."
+  display_name: "书签表维护"
+  short_description: "维护书签汇总表：补四列、类别排序、验证、去重、移表、跨表检查、美化"
+  default_prompt: "Use $skill-name to organize, verify, and style my bookmark summary tables."

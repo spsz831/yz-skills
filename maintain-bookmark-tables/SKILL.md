@@ -1,11 +1,15 @@
 ---
 name: maintain-bookmark-tables
-description: Maintain "XX书签汇总.xlsx" bookmark summary tables (9-column format：序号/名称/URL/类别/网站类型/功能定位/是否重复/备注/添加日期). Use when adding new bookmarks, enriching the four content columns (类别/网站类型/功能定位/备注), sorting by category with CAT_ORDER, verifying tables pass the five validation metrics (空值/笼统类型/旧式引用/断档/悬空 must all be 0), cleaning duplicate rows, or checking cross-table consistency (dangling 同表『X』 references, 收录于XX.xlsx file existence, same-URL across tables). Also supports URL auto-inference (infer_from_url.py), browser bookmark import (import_html.py), library-wide stats (report_summary.py), and URL health checks (check_urls.py).
+description: Maintain "XX书签汇总.xlsx" bookmark summary tables (9-column format：序号/名称/URL/类别/网站类型/功能定位/是否重复/备注/添加日期). Use when adding new bookmarks, enriching the four content columns (类别/网站类型/功能定位/备注), sorting by category with CAT_ORDER, verifying tables pass the seven validation metrics (空值/笼统类型/旧式引用/断档/悬空/跨sheet/残行 must all be 0), cleaning duplicate rows and residual rows, moving bookmarks between tables or sheets (move_entry.py), checking cross-table consistency (dangling 同表『X』 references, 收录于XX.xlsx file existence, same-URL across tables), or styling tables uniformly (表头深蓝白字 + 数据行斑马纹隔行填充 + 筛选冻结 + 深灰边框). Also supports URL auto-inference (infer_from_url.py), browser bookmark import (import_html.py), library-wide stats (report_summary.py), and URL health checks (check_urls.py).
 ---
 
 # Maintain Bookmark Tables
 
 维护 `XX书签汇总.xlsx` 系列表格（openpyxl 操作，Windows 下先 `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')`）。
+
+**自定义入口**：所有硬编码默认值集中在 `scripts/config.py`（表结构/样式/词表/引用语法/内置规则）。开箱即用作者的书签表结构；别人适配自己的表，改 config.py 即可，无需动脚本。详见 README.md。
+
+**多 sheet 文件**：`AI书签汇总.xlsx` 是唯一多 sheet 文件（12 个 AI 子表合一，每 sheet 一个子类，9 列结构独立）。`verify_table` / `sort_table` / `style_table` / `infer_from_url` 均已支持多 sheet；`sort_table --sheet` 可指定排序的 sheet。
 
 完整规范见 [references/rules.md](references/rules.md)，以下为工作流速查。
 
@@ -43,10 +47,12 @@ description: Maintain "XX书签汇总.xlsx" bookmark summary tables (9-column fo
 python scripts/verify_table.py <xlsx> [...]
 ```
 
-五指标**必须全 0**：空值 / 笼统类型 / 旧式引用 / 类别断档 / 悬空。任一非 0 即返回 exit 1，修复后重跑。悬空非 0 时脚本会列出具体行：
+七指标**必须全 0**：空值 / 笼统类型 / 旧式引用 / 类别断档 / 悬空 / **跨sheet** / **残行**。任一非 0 即返回 exit 1，修复后重跑。脚本会列出具体行。索引表（书签整理最终清单，4列结构）脚本自动跳过。
 
 - **同名行悬空** → 给名称列补区分后缀（URL/功能），让引用精确命中
 - **别名引用悬空** → 把备注引用统一成名称列实际值（或名称列补成引用值）
+- **跨sheet**（`同表『X』` 的 X 在文件其他 sheet）→ 去掉「同表」，改成 `与『X』同源（见AI书签汇总.xlsx某sheet）`
+- **残行**（名称列为空但其余列有内容）→ 确认该 URL 是否已完整收录，是则删（复制残留），否则补齐 9 列
 - 改/截断长名时先 grep 所有引用它的行，避免反向悬空
 
 ### 4. 去重清理
@@ -64,11 +70,47 @@ python scripts/dedup_report.py <xlsx> --delete  # 确认后删除重复行并重
 python scripts/cross_table_check.py [目录]
 ```
 
-检查：悬空引用（`与同表『X』` 目标名不存在）、跨表引用文件缺失、同 URL 跨表重复。发现后逐处修复。
+检查：悬空引用（`与同表『X』` 目标名不存在）、跨表引用文件缺失、同 URL 跨表重复（**已标「是否重复=是」归为已处理，只报未标记的**）。发现后逐处修复。
 
-### 6. 自动辅助（推断 / 导入 / 统计 / 健康检查）
+### 6. 表格美化（统一样式）
 
-四个只读脚本把机械判断降为"脚本建议 + 人工确认"，完整规范见 [references/rules.md](references/rules.md) §8：
+所有书签汇总表统一美化，用脚本而非手改：
+
+```bash
+python scripts/style_table.py <xlsx> [...]      # 9列书签表
+python scripts/style_index.py <xlsx> [...]      # 索引表（书签整理最终清单）
+```
+
+样式规范（全表一致，与 9 列书签表同体系）：
+
+- **表头**：微软雅黑 11 加粗、白字、深蓝底 `3867A6`、居中、行高 26
+- **数据行**：微软雅黑 10.5、细边框（深灰 `999999`，WPS 清晰可见）、从第一数据行起浅蓝 `EEF4FB`/白 **隔行交替**（斑马纹）
+- **对齐**：序号/类别/网站类型/是否重复/添加日期 居中；名称/URL/功能定位/备注 左对齐+换行；URL 蓝字 `2563EB`
+- **列宽**：序号5 / 名称38 / URL50 / 类别14 / 网站类型14 / 功能定位32 / 是否重复10 / 备注30 / 添加日期12
+- **筛选+冻结**：顶部第一行自动筛选 + 冻结首行（`freeze_panes='A2'`）
+- **幂等**：全格式统一（字体/行高/对齐/边框/填充/URL蓝字/筛选/冻结），可反复跑
+
+**写回行序后必须重跑 style_table**：排序（sort_table）/移表（move_entry）/删行（dedup --delete）都只搬内容不搬样式，斑马纹会错位——三个操作完成后统一跑 `style_table.py` 恢复。
+
+**美化边界**：行高 22 是统一基线不逐行拉高；列宽固定不手动改（全库一致利于跨表对比）；筛选/冻结/边框由脚本统一加且幂等，手动拖筛选/拖冻结线/调边框色都会在重跑时被重置——排版问题一律改脚本重跑，不手改单格。
+
+**索引表（书签整理最终清单）**：用 `style_index.py`，列1表/列3所属类别/列4说明 左对齐+换行，列2条数居中，**合计行浅黄底加粗**（FFF2CC）突出。
+
+### 7. 书签移表
+
+把一条书签从 A 表移到 B 表（含同文件跨 sheet），按 URL 定位、按名称锚点插入、双表自动重编号：
+
+```bash
+python scripts/move_entry.py --from src.xlsx --url <url> --to dst.xlsx \
+    [--from-sheet 源sheet] [--to-sheet 目标sheet] [--cat 新类别] \
+    [--before "名称"] [--after "名称"] [--dry-run]
+```
+
+同文件跨 sheet 移动（如 AI 文件内移子表）传同一 `--from`/`--to` + 两个 sheet 名。默认插到目标表同类别末尾；`--dry-run` 先看位置。写回后跑 `style_table.py` 恢复美化，再 `verify_table.py` 确认无悬空/跨sheet。
+
+### 8. 自动辅助（推断 / 导入 / 统计 / 健康检查）
+
+四个只读脚本把机械判断降为"脚本建议 + 人工确认"，完整规范见 [references/rules.md](references/rules.md) §10：
 
 ```bash
 python scripts/infer_from_url.py <url> [...];        # URL → 网站类型/类别 建议（内置规则+库学习）
@@ -98,12 +140,15 @@ python scripts/dedup_report.py <xlsx> --suggest      # 归一化后重复候选�
 
 ## Resources
 
-- `scripts/verify_table.py` — 五指标验证（空值/笼统/旧引用/断档/悬空，悬空列出具体行）
+- `scripts/verify_table.py` — 七指标验证（空值/笼统/旧引用/断档/悬空/跨sheet/残行，列出具体行）
 - `scripts/sort_table.py` — 类别优先排序 + 重编号
 - `scripts/dedup_report.py` — 重复项报告（--suggest 归一化候选）/ 确认删除
-- `scripts/cross_table_check.py` — 跨表一致性检查
+- `scripts/cross_table_check.py` — 跨表一致性检查（同 URL 已标重复不告警）
+- `scripts/move_entry.py` — 书签移表（URL 定位 + 名称锚点 + 双表重编号，支持同文件跨 sheet）
 - `scripts/infer_from_url.py` — URL → 网站类型/类别 推断（内置规则+库学习）+ `--table` 分表建议 + `--online` 联网证据
 - `scripts/import_html.py` — 书签 HTML 或纯 URL .txt 导入为待入库清单（可带推断 + 建议表）
 - `scripts/report_summary.py` — 全库统计报告（规模/概况/重复/失效/低频词汇）
 - `scripts/check_urls.py` — URL 健康检查（需联网，HEAD 优先）
+- `scripts/style_table.py` — 9列书签表统一美化（表头深蓝白字 + 数据行斑马纹）
+- `scripts/style_index.py` — 索引表统一美化（斑马纹 + 合计行浅黄突出）
 - `references/rules.md` — 完整规范（表格结构 / 类型细分 / 名称引用 / 验证指标 / 排序 / 去重 / 跨表 / 自动辅助脚本）

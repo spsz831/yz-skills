@@ -162,6 +162,25 @@ HTTP_UA = ('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
 
 
 # ==========================================================================
+# 六、AI 补全 / 审计（ai_enrich.py / ai_audit.py）
+# ==========================================================================
+
+# LLM API 配置。注意：**API key 不在此文件**，运行时从环境变量 AI_API_KEY 读取，
+# 防止 key 落进公开仓库。endpoint 留空则用 Anthropic 官方端点。
+AI_ENRICH = {
+    'endpoint': 'https://api.anthropic.com/v1/messages',  # Anthropic Messages API
+    'model': 'claude-sonnet-5',      # 贴合 Claude 生态；OpenAI 系用户可改
+    'max_tokens': 300,
+    'temperature': 0.0,              # 0 = 确定性输出（补全/审计更可靠）
+    'timeout': 15,
+    'retries': 2,                    # 网络失败重试次数
+}
+
+# ai_enrich 批量并发（LLM 建议串行更稳，默认 3）
+AI_ENRICH_WORKERS = 3
+
+
+# ==========================================================================
 # 五、多 sheet 文件
 # ==========================================================================
 

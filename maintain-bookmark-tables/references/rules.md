@@ -216,3 +216,92 @@ python scripts/move_entry.py --from src.xlsx --url <url> --to dst.xlsx \
 - **同文件跨 sheet**：`--from` 与 `--to` 传同一文件，加 `--from-sheet`/`--to-sheet`
 - `--dry-run` 只打印不写文件；写回后样式简化，跑 `style_table.py` 恢复美化
 - 移动后如备注引用受影响，跑 `verify_table.py` 检查悬空/跨sheet
+
+## 12. 自动化闭环（捕获 / 补全 / 健康 / 门户 / 同步 / 审计）
+
+以下脚本把书签价值链两端补齐：**发现端零摩擦入库**、**消费端可搜索**、**生命周期自动治理**。它们复用既有脚本的写表逻辑（`entry.add_cmd` / `InferEngine` / `check_urls.check_one` / `export_bookmarks` / `import_html`），不重复实现。
+
+### 12.1 零摩擦捕获 `capture.py`
+
+```bash
+python scripts/capture.py https://example.com               # 只出清单（推荐先看）
+python scripts/capture.py https://example.com --online      # 联网抓 <title> 作名称
+python scripts/capture.py https://a.com --add --yes         # 一键写表（自动查重+备份+重编号）
+```
+
+- `URL → 抓title(可选) → 推断类型/类别 → 建议表 → 全库查重 → 确认后写表`
+- 复用 `entry.add_cmd()`，与日常新增完全一致的查重/备份/重编号；全库查重命中会列出，`--force` 才可重复入库
+- title 抓取失败用域名占位并标 `[无title]`，不阻塞捕获
+- 多 sheet 文件默认写**第一个 sheet**（与 `entry.py add` 一致）；建议显式 `--sheet` 或 `--cat` 让插入位置落到正确子表
+
+### 12.2 AI 自动补全 `ai_enrich.py`
+
+```bash
+python scripts/ai_enrich.py <xlsx>                 # 预览（默认只打印建议）
+python scripts/ai_enrich.py <xlsx> --apply         # 写回（改前自动备份）
+python scripts/ai_enrich.py --dir . --limit 50     # 全库前 50 条（需 AI_API_KEY）
+python scripts/ai_enrich.py <xlsx> --only-empty    # 只处理未填类别/类型的行
+```
+
+- **LLM 直连**：标准库 `urllib` POST Anthropic Messages API，**key 从环境变量 `AI_API_KEY` 读**（不写进 config.py，防公开仓库泄漏）；端点/模型见 `config.AI_ENRICH`
+- **LLM 为主判**：输出覆盖类别/类型/定位/备注四列；`InferEngine` 推断结果作为 prompt 上下文参考
+- **失败兜底**：LLM 失败的行保留原值、不下写；跑完请 review（建议不绝对正确）
+- 返回 JSON：`{type, cat, desc, note, is_dup, dup_reason}`；`--only-empty` 配合定时任务可做增量补全
+- **`--apply` 写回后**建议跑 `style_table.py` 恢复样式，再 `verify_table.py` 验证
+
+### 12.3 自动健康检查 `health_check_auto.py`
+
+```bash
+python scripts/health_check_auto.py <xlsx> [--write] [--log health.log]
+python scripts/health_check_auto.py --dir . --limit 200 --write --log health.log
+```
+
+- **最小侵入写回**：仅死链(404/410)/客户端错误(4xx)/连接失败(ERR) 的行，在备注**追加** ` | 检查:YYYY-MM-DD 状态:X`；健康行备注不动
+- **幂等**：`strip_check_tail` 先剥旧尾巴再重测；状态转好的行剥除尾巴还原原备注
+- **类别/网站类型不改**（避免与 `DEAD_CATEGORY` 语义混淆）；检查记录写独立日志（`--log`）
+- 复用 `check_urls.check_one`；真实发请求，全库需 `--limit`，防爬站点 `--skip`
+- **Windows 定时**（任务计划程序，每日 9 点，手动执行一次）：
+  ```bash
+  schtasks /create /tn "书签健康检查" /tr "\"D:\\Python\\python.exe\" \"...\\scripts\\health_check_auto.py\" --dir 书签库 --limit 300 --write --log health.log" /sc daily /st 09:00 /f
+  ```
+
+### 12.4 检索门户 `build_portal.py`
+
+```bash
+python scripts/build_portal.py --dir . --out portal.html
+```
+
+- 全库 → **单文件可搜索 HTML**（零依赖，双击 `file://` 即用）：搜索框按名称/URL/类别/类型/定位/备注实时过滤 + 类别标签点击切换
+- 按类别分区块，每区按表分组展示；顶部统计（共 N 条 | M 类别 | K 表）
+- 只读不写表；数据嵌入 HTML，重新生成即可刷新。适合放桌面/网盘随时查
+
+### 12.5 双向同步 `reconcile.py`
+
+```bash
+python scripts/reconcile.py bookmarks.html --dir .            # 只出 diff
+python scripts/reconcile.py bookmarks.html --dir . --sync     # 浏览器→表（补 only_in_html）
+python scripts/reconcile.py --export --out bookmarks_sync.html  # 表→浏览器
+```
+
+- `only_in_html`（浏览器有、表没有）→ 补进表；`only_table`（表有、浏览器没有）→ 仅报告
+- 补入决策链：文件夹路径 → 库中表名模糊匹配（`AI/` 进 AI书签汇总.xlsx）→ 兜底 `DEFAULT_TABLE`
+- 复用 `entry.add_cmd`（自动查重/备份/重编号）+ `import_html.BookmarkParser`；`--export` 复用 `export_bookmarks`
+
+### 12.6 智能审计 `ai_audit.py`
+
+```bash
+python scripts/ai_audit.py --dir . --out audit.md          # 默认报告
+python scripts/ai_audit.py --dir . --samples 3             # 每表抽 3 条
+python scripts/ai_audit.py --dir . --focus 类别名           # 专项追问
+```
+
+- **分层采样控制 LLM 调用量**：全库 1800+ 条 → 1~3 次调用。库级统计纯 Python（0 次）→ 每表抽 1-2 条代表性行（低频类别优先）→ 单次 prompt 汇总；`--focus` 按需追加
+- 复用 `ai_enrich.call_llm_one`（同一 HTTP 通道，同 `AI_API_KEY`）
+- 输出「书签健康报告」：内容过时/冗余信号、质量缺口、可合并类别、行动清单
+- LLM 失败兜底：仍输出纯 Python 统计报告
+
+### 12.7 LLM 配置约定（ai_enrich / ai_audit 共用）
+
+- **API key 只从环境变量 `AI_API_KEY` 读**，绝不落进 config.py / 公开仓库
+- 端点/模型/超时/重试见 `config.AI_ENRICH`（默认 Anthropic Messages API，`claude-sonnet-5`）
+- 所有写表脚本（capture/ai_enrich --apply/health_check --write/reconcile --sync）写前自动备份 `<表>.bak.xlsx`

@@ -51,6 +51,13 @@ python scripts/check_urls.py --dir . --limit 100
 
 # 7. 导出浏览器书签 HTML（多机同步）
 python scripts/export_bookmarks.py --dir . --out bookmarks.html
+
+# 8. 自动化闭环（可选，需 AI_API_KEY 或浏览器文件）
+python scripts/capture.py https://example.com --online      # 零摩擦捕获 → 建议清单
+python scripts/ai_enrich.py 你的表.xlsx                     # AI 补全预览（--apply 写回）
+python scripts/build_portal.py --dir . --out portal.html    # 检索门户（单文件可搜索 HTML）
+python scripts/reconcile.py bookmarks.html --dir .          # 浏览器↔表 双向同步 diff
+python scripts/ai_audit.py --dir . --out audit.md           # AI 审计报告
 ```
 
 ## 自定义你的表结构
@@ -83,12 +90,15 @@ BAD_TYPES = ('在线工具', '官网', '其他')
 | `BUILTIN_RULES` | URL 推断的内置平台规则 |
 | `FALLBACK_TYPE` | 推断兜底网站类型 |
 | `HTTP_TIMEOUT` / `HTTP_WORKERS` / `HTTP_UA` | 死链检测网络参数 |
+| `AI_ENRICH` | LLM 端点/模型/超时/重试（ai_enrich / ai_audit 用，**无 key**，key 走环境变量 `AI_API_KEY`） |
 
 ## 脚本一览
 
 | 脚本 | 功能 |
 |---|---|
 | `entry.py` | 日常增删改统一入口（add/update/delete，自动查重+重编号+备份） |
+| `capture.py` | 零摩擦捕获（URL → 建议清单 → 一键入库） |
+| `ai_enrich.py` | AI 自动补全（LLM 直连补四列，key 走环境变量） |
 | `verify_table.py` | 7 项指标验证（质量闸门） |
 | `sort_table.py` | 类别优先排序 + 重编号 |
 | `style_table.py` / `style_index.py` | 统一美化（书签表 / 索引表） |
@@ -99,6 +109,10 @@ BAD_TYPES = ('在线工具', '官网', '其他')
 | `import_html.py` | 浏览器书签 HTML → 待入库清单 |
 | `report_summary.py` | 全库统计报告 |
 | `check_urls.py` | URL 死链检测 |
+| `health_check_auto.py` | 自动健康检查（最小侵入写回备注 + 日志，可定时） |
+| `build_portal.py` | 检索门户（全库 → 单文件可搜索 HTML） |
+| `reconcile.py` | 浏览器书签 ↔ 表 双向同步 |
+| `ai_audit.py` | 智能审计（分层采样 + LLM 健康报告） |
 | `export_bookmarks.py` | 表格 → 浏览器书签 HTML（多机同步） |
 
 ## 适用场景

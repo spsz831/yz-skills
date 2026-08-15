@@ -1,6 +1,6 @@
 ---
 name: maintain-bookmark-tables
-description: Maintain "XX书签汇总.xlsx" bookmark summary tables (9-column format：序号/名称/URL/类别/网站类型/功能定位/是否重复/备注/添加日期). Use when adding new bookmarks, enriching the four content columns (类别/网站类型/功能定位/备注), sorting by category with CAT_ORDER, verifying tables pass the seven validation metrics (空值/笼统类型/旧式引用/断档/悬空/跨sheet/残行 must all be 0), cleaning duplicate rows and residual rows, moving bookmarks between tables or sheets (move_entry.py), checking cross-table consistency (dangling 同表『X』 references, 收录于XX.xlsx file existence, same-URL across tables), or styling tables uniformly (表头深蓝白字 + 数据行斑马纹隔行填充 + 筛选冻结 + 深灰边框). Also supports URL auto-inference (infer_from_url.py), browser bookmark import (import_html.py), library-wide stats (report_summary.py), and URL health checks (check_urls.py).
+description: Maintain "XX书签汇总.xlsx" bookmark summary tables (9-column format：序号/名称/URL/类别/网站类型/功能定位/是否重复/备注/添加日期). Use when adding new bookmarks (entry.py add, capture.py one-shot capture), enriching the four content columns (ai_enrich.py LLM-assisted), sorting by category with CAT_ORDER, verifying tables pass the seven validation metrics (空值/笼统类型/旧式引用/断档/悬空/跨sheet/残行 must all be 0), cleaning duplicate rows and residual rows, moving bookmarks between tables or sheets (move_entry.py), checking cross-table consistency, or styling tables uniformly. Also supports URL auto-inference (infer_from_url.py), browser bookmark import/export (import_html.py / export_bookmarks.py / reconcile.py two-way sync), library-wide stats (report_summary.py), URL health checks (check_urls.py, health_check_auto.py scheduled), a searchable portal page (build_portal.py), and AI audit reports (ai_audit.py).
 ---
 
 # Maintain Bookmark Tables
@@ -155,6 +155,41 @@ python scripts/export_bookmarks.py --dir . --out bookmarks.html  # 表格 → �
 - **健康检查会真实发请求**：全库需 `--limit`，防爬站点 `--skip`；`--online` 同样发请求，仅对兜底 URL
 - 新增书签半自动流程：URL → `infer --table` 分表 → 用该表词汇补类别/类型/定位 → 追加到表尾 → `verify_table` 验证
 
+### 9. 自动化闭环（捕获 / 补全 / 健康 / 门户 / 同步 / 审计）
+
+把书签价值链两端补齐：**发现端零摩擦入库**、**消费端可搜索**、**生命周期自动治理**。完整规范见 [references/rules.md](references/rules.md) §12。
+
+```bash
+# 零摩擦捕获：URL → 建议清单 → 一键入库（复用 entry.add_cmd，自动查重/备份/重编号）
+python scripts/capture.py https://example.com                 # 只出清单
+python scripts/capture.py https://example.com --add --yes     # 一键写表
+
+# AI 自动补全：LLM 直连补四列（key 从环境变量 AI_API_KEY 读，不进 config.py）
+python scripts/ai_enrich.py AI书签汇总.xlsx                   # 预览
+python scripts/ai_enrich.py AI书签汇总.xlsx --apply           # 写回（自动备份）
+
+# 自动健康检查：最小侵入写回备注（仅死链/错误追加 ` | 检查:日期 状态:X`），幂等
+python scripts/health_check_auto.py --dir . --limit 200 --write --log health.log
+
+# 检索门户：全库 → 单文件可搜索 HTML（零依赖，双击即用）
+python scripts/build_portal.py --dir . --out portal.html
+
+# 双向同步：浏览器书签 ↔ 表（--sync 补 only_in_html，--export 表→浏览器）
+python scripts/reconcile.py bookmarks.html --dir .             # 只出 diff
+python scripts/reconcile.py bookmarks.html --dir . --sync      # 浏览器→表
+
+# 智能审计：分层采样控制 LLM 调用量（全库 1800+ 条 → 1-3 次调用）
+python scripts/ai_audit.py --dir . --out audit.md
+```
+
+关键约定：
+
+- **LLM key 只从环境变量 `AI_API_KEY` 读**（ai_enrich/ai_audit），绝不落进 config.py / 公开仓库
+- **自动化写回都可逆**：capture/ai_enrich --apply/health_check --write/reconcile --sync 写前自动备份 `<表>.bak.xlsx`
+- **health_check 最小侵入**：只改死链/错误的备注（追加检查尾巴），健康行不动，类别/类型不改；状态转好自动剥尾巴还原
+- **reconcile 补入决策链**：文件夹路径 → 表名模糊匹配 → 兜底默认表；只补 only_in_html，不改已有行
+- 定时自动化（Windows 任务计划程序）示例见 rules.md §12.3（每日 9 点健康检查）
+
 ## 关键规则（速查）
 
 - **引用禁用序号**，只用名称：`与同表『完整名称』同源`；名称须与目标行精确一致
@@ -178,4 +213,10 @@ python scripts/export_bookmarks.py --dir . --out bookmarks.html  # 表格 → �
 - `scripts/style_table.py` — 9列书签表统一美化（表头深蓝白字 + 数据行斑马纹）
 - `scripts/style_index.py` — 索引表统一美化（斑马纹 + 合计行浅黄突出）
 - `scripts/export_bookmarks.py` — 表格 → 浏览器书签 HTML 导出（单sheet表=顶层文件夹，多sheet表=组+子文件夹）
-- `references/rules.md` — 完整规范（表格结构 / 类型细分 / 名称引用 / 验证指标 / 排序 / 去重 / 跨表 / 自动辅助脚本）
+- `scripts/capture.py` — 零摩擦捕获（URL → 建议清单 → 一键入库，复用 entry.add_cmd）
+- `scripts/ai_enrich.py` — AI 自动补全（LLM 直连补四列，key 走 AI_API_KEY 环境变量）
+- `scripts/health_check_auto.py` — 自动健康检查（最小侵入写回备注 + 日志，幂等）
+- `scripts/build_portal.py` — 检索门户（全库 → 单文件可搜索 HTML）
+- `scripts/reconcile.py` — 双向同步（浏览器书签 ↔ 表，--sync 补入 / --export 导出）
+- `scripts/ai_audit.py` — 智能审计（分层采样 + LLM 健康报告）
+- `references/rules.md` — 完整规范（表格结构 / 类型细分 / 名称引用 / 验证指标 / 排序 / 去重 / 跨表 / 自动辅助脚本 / 自动化闭环）

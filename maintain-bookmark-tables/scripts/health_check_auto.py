@@ -5,7 +5,7 @@
 用法:
   python health_check_auto.py <xlsx> [<xlsx>...]          # 只报告，不写表
   python health_check_auto.py <xlsx> --write --log health.txt   # 写回备注 + 记日志
-  python health_check_auto.py --dir . --limit 200         # 全库前 200 条（需联网）
+  python health_check_auto.py --dir . --limit 200         # 全库前 200 条（预算跨文件累计，需联网）
 
 写回策略（最小侵入）:
   - 仅死链(404/410)/客户端错误(4xx)/连接失败(ERR) 的行，在备注**追加**
@@ -19,11 +19,11 @@ Windows 定时（任务计划程序，每日 9 点）:
       --dir E:\\WorkClaudeCode\\yuque\\maintain-bookmark-tables --limit 300 --write
       --log health.log" /sc daily /st 09:00 /f
 """
-import sys, io, os, re, glob, argparse
+import sys, os, re, glob, argparse
 from datetime import datetime
 
 if getattr(sys.stdout, 'encoding', '').lower() != 'utf-8':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stdout.reconfigure(encoding='utf-8')
 try:
     from config import COLUMNS, COLUMN_COUNT, TABLE_GLOB, is_index
 except ImportError:
@@ -75,10 +75,16 @@ def collect_files(dirpath):
                   and not is_index(p))
 
 
-def process_table(path, *, limit=0, skip_set=(), check_one=None, out=None, write=False):
+def count_entries_multi(path):
+    """轻量统计一个表的书签条数（不检查）。供全局预算分配用。"""
+    return len(load_entries_multi(path))
+
+
+def process_table(path, *, limit=0, skip_set=(), check_one=None, out=None, write=False, workers=8):
     """检查一个表，返回 {change: [(sheet,r,name,url,status,note)], dead, err, skip, total}。"""
     import openpyxl
     from collections import defaultdict
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     if out is None:
         out = print
@@ -87,9 +93,15 @@ def process_table(path, *, limit=0, skip_set=(), check_one=None, out=None, write
         entries = entries[:limit]
 
     statuses = {}  # (sheet, r) -> status
-    for sheet, r, name, url in entries:
-        st = check_one(url, set(skip_set))[1]
-        statuses[(sheet, r)] = st
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futs = {ex.submit(check_one, url, set(skip_set)): (sheet, r)
+                for sheet, r, name, url in entries}
+        for fut in as_completed(futs):
+            key = futs[fut]
+            try:
+                statuses[key] = fut.result()[1]
+            except Exception:
+                statuses[key] = 'ERR:check_one'  # 单条异常不影响整批
 
     changes = []
     dead = err = skip = 0
@@ -141,6 +153,8 @@ def process_table(path, *, limit=0, skip_set=(), check_one=None, out=None, write
             ws.cell(r, I_NOTE + 1).value = base
             real_changes += 1
     if real_changes:
+        import shutil
+        shutil.copy2(path, path + '.bak.xlsx')  # 写前备份，可回滚
         wb.save(path)
         out(f'✅ {os.path.basename(path)}: 写回 {real_changes} 行备注（{today}）')
     else:
@@ -156,6 +170,7 @@ def main(argv):
     ap.add_argument('--dir', default='.', help='书签库目录（配 --limit 用）')
     ap.add_argument('--limit', type=int, default=0, help='限制检查条数（--dir 全库时建议必填）')
     ap.add_argument('--skip', default='', help='逗号分隔跳过的域名')
+    ap.add_argument('--workers', type=int, default=8, help='并发检查线程数（默认 8，同 check_urls）')
     ap.add_argument('--write', action='store_true', help='写回备注（默认只报告不写表）')
     ap.add_argument('--log', default=None, help='检查记录追加到此日志文件')
     ap.add_argument('--selftest', action='store_true')
@@ -179,24 +194,40 @@ def main(argv):
             return 2
 
     if args.log:
-        import os
         log_dir = os.path.dirname(os.path.abspath(args.log)) or '.'
         os.makedirs(log_dir, exist_ok=True)
 
     summary = {'dead': 0, 'err': 0, 'change': 0, 'total': 0}
+    # --dir 全库扫描：--limit 是**全库预算**（跨文件累计，同 check_urls 语义），
+    # 先统计各文件条数分配剩余预算，预算耗尽即停，避免某次运行请求过多。
+    remaining = args.limit if not args.xlsx else 0
     for f in files:
         if not os.path.exists(f):
             print(f'⚠️ 文件不存在: {f}')
             continue
-        res = process_table(f, limit=args.limit, skip_set=skip_set,
-                            check_one=check_one, write=args.write,
-                            out=None if not args.log else
-                            (lambda s: _log_and_print(args.log, s)))
+        if remaining:
+            n = count_entries_multi(f)
+            if n == 0:
+                continue
+            take = min(n, remaining)
+            res = process_table(f, limit=take, skip_set=skip_set,
+                                check_one=check_one, write=args.write, workers=args.workers,
+                                out=None if not args.log else
+                                (lambda s: _log_and_print(args.log, s)))
+            remaining -= take
+        else:
+            res = process_table(f, skip_set=skip_set, check_one=check_one,
+                                write=args.write, workers=args.workers,
+                                out=None if not args.log else
+                                (lambda s: _log_and_print(args.log, s)))
         for k in summary:
             summary[k] += res.get(k, 0)
+        if remaining <= 0:
+            break
 
     print(f"\n汇总: 检查 {summary['total']} 条，死链 {summary['dead']}，连接失败 {summary['err']}，写回 {summary['change']}")
     if args.log:
+        _log_and_print(args.log, f"汇总: 检查 {summary['total']} 条，死链 {summary['dead']}，连接失败 {summary['err']}，写回 {summary['change']}")
         print(f'  日志: {args.log}')
     return 1 if (summary['dead'] or summary['err']) else 0
 
@@ -240,9 +271,10 @@ def _selftest():
         wb.close()
         assert res['dead'] == 1 and res['total'] == 2 and res['change'] == 0
 
-        # 写回 + 幂等：跑两遍备注不重复
+        # 写回 + 幂等：跑两遍备注不重复；写前有备份
         res = process_table(p, check_one=fake, write=True)
         assert res['change'] == 1
+        assert os.path.exists(p + '.bak.xlsx')  # 写前备份
         res2 = process_table(p, check_one=fake, write=True)
         assert res2['change'] == 0  # 尾巴已存在，strip 后重加 → 无变化
         wb = openpyxl.load_workbook(p)

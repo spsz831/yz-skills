@@ -13,14 +13,15 @@
 
 注意: 会真实发起网络请求；部分站点限流/反爬，--skip 可排除。默认并发 8。
 """
-import sys, io, os, re, socket, ipaddress, argparse
+import sys, os, re, socket, ipaddress, argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from collections import defaultdict
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if getattr(sys.stdout, 'encoding', '').lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
 try:
     from config import HTTP_TIMEOUT, HTTP_WORKERS, HTTP_UA, TABLE_GLOB, COLUMN_COUNT, COLUMNS
 except ImportError:
@@ -57,6 +58,15 @@ def skip_host(host, skip_set):
     return False
 
 
+def _ascii_url(url):
+    """非 ASCII 主机名（中文域名）→ IDNA punycode，urllib 才能发起请求。"""
+    p = urlparse(url)
+    if not p.hostname or p.hostname.isascii():
+        return url
+    ascii_host = p.hostname.encode('idna').decode('ascii')
+    return p._replace(netloc=p.netloc.replace(p.hostname, ascii_host, 1)).geturl()
+
+
 def check_one(url, skip_set):
     """返回 (url, 状态) ；状态为 int 状态码 或 'ERR:原因'。"""
     parsed = urlparse(url)
@@ -65,6 +75,7 @@ def check_one(url, skip_set):
     host = (parsed.hostname or '').lower()
     if skip_host(host, skip_set):
         return (url, 'SKIP')
+    url = _ascii_url(url)
 
     def _req(method, headers=None):
         return Request(url, headers=headers or {'User-Agent': UA}, method=method)
@@ -120,6 +131,8 @@ def main(argv):
         ok &= not skip_host('example.com', set())
         ok &= skip_host('example.com', {'example.com'})
         ok &= skip_host('ftp.example.com', set()) is False and True  # 协议判定在 check_one
+        ok &= _ascii_url('https://例子.测试/p') == 'https://xn--fsqu00a.xn--0zwm56d/p'
+        ok &= _ascii_url('https://example.com/a') == 'https://example.com/a'
         print(f'selftest: {"通过" if ok else "失败"}')
         return 0 if ok else 1
 

@@ -15,6 +15,30 @@ description: Maintain "XX书签汇总.xlsx" bookmark summary tables (9-column fo
 
 ## 工作流
 
+### 0. 日常增删改（统一入口 entry.py）
+
+新增 / 修改 / 删除一条书签，一个命令搞定——自动查重、自动重编号、写前自动备份：
+
+```bash
+# 新增：全库查重 → 同类末尾插入 → 填当天日期
+python scripts/entry.py add "名称" "https://url" --table XX书签汇总.xlsx \
+    [--cat 类别] [--desc 功能定位] [--type 网站类型] [--sheet 名] [--infer]
+
+# 修改：按 URL 定位，只改指定列
+python scripts/entry.py update --table XX书签汇总.xlsx --url <url> --set 类别=新类别,备注=xxx
+
+# 删除：先预览，确认后执行（--dry-run 只看，--yes 跳过确认）
+python scripts/entry.py delete --table XX书签汇总.xlsx --url <url> --dry-run
+python scripts/entry.py delete --table XX书签汇总.xlsx --url <url> --yes
+```
+
+- **add 自动全库查重**：同 URL 已在其他表/本表收录 → 拒绝插入（`--force` 强制；`--infer` 自动推断类别/类型）
+- **update 只改指定列**：`--set 列=值,列=值`，未知列名直接报错
+- **delete 先预览**：列出整行内容再确认；`--dry-run` 只预览不删
+- **写前自动备份**：改动前存 `<表>.bak.xlsx`，删错可回滚（`--no-backup` 关闭）
+- **写后提示**：自动重编号后，跑 `style_table.py` 恢复样式 + `verify_table.py` 验证
+- 同文件多 sheet 用 `--sheet` 指定目标 sheet
+
 ### 1. 新增 / 编辑书签
 
 在对应类别的表格末尾追加一行并补齐 9 列：
@@ -121,6 +145,7 @@ python scripts/import_html.py <bookmarks.html|urls.txt> --infer  # 书签 HTML �
 python scripts/report_summary.py --dir . --out report.md  # 全库统计报告
 python scripts/check_urls.py <xlsx> [--skip 域名]     # URL 健康检查（需联网）
 python scripts/dedup_report.py <xlsx> --suggest      # 归一化后重复候选组
+python scripts/export_bookmarks.py --dir . --out bookmarks.html  # 表格 → 浏览器书签 HTML（多机同步）
 ```
 
 要点：
@@ -140,6 +165,7 @@ python scripts/dedup_report.py <xlsx> --suggest      # 归一化后重复候选�
 
 ## Resources
 
+- `scripts/entry.py` — 日常增删改统一入口（add/update/delete，自动查重+重编号+备份）
 - `scripts/verify_table.py` — 七指标验证（空值/笼统/旧引用/断档/悬空/跨sheet/残行，列出具体行）
 - `scripts/sort_table.py` — 类别优先排序 + 重编号
 - `scripts/dedup_report.py` — 重复项报告（--suggest 归一化候选）/ 确认删除
@@ -151,4 +177,5 @@ python scripts/dedup_report.py <xlsx> --suggest      # 归一化后重复候选�
 - `scripts/check_urls.py` — URL 健康检查（需联网，HEAD 优先）
 - `scripts/style_table.py` — 9列书签表统一美化（表头深蓝白字 + 数据行斑马纹）
 - `scripts/style_index.py` — 索引表统一美化（斑马纹 + 合计行浅黄突出）
+- `scripts/export_bookmarks.py` — 表格 → 浏览器书签 HTML 导出（单sheet表=顶层文件夹，多sheet表=组+子文件夹）
 - `references/rules.md` — 完整规范（表格结构 / 类型细分 / 名称引用 / 验证指标 / 排序 / 去重 / 跨表 / 自动辅助脚本）

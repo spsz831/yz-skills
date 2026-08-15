@@ -39,14 +39,18 @@ python scripts/style_table.py 你的表.xlsx
 # 3. 验证 7 项指标全 0
 python scripts/verify_table.py 你的表.xlsx
 
-# 4. 从浏览器书签 HTML 导入
+# 4. 日常增删改一条命令（全库查重+自动重编号+写前备份）
+python scripts/entry.py add "名称" "https://url" --table 你的表.xlsx --infer
+
+# 5. 从浏览器书签 HTML 导入
 python scripts/import_html.py bookmarks.html --infer
 
-# 5. 全库统计
+# 6. 全库统计 / 死链检测
 python scripts/report_summary.py --dir . --out report.md
-
-# 6. 死链检测
 python scripts/check_urls.py --dir . --limit 100
+
+# 7. 导出浏览器书签 HTML（多机同步）
+python scripts/export_bookmarks.py --dir . --out bookmarks.html
 ```
 
 ## 自定义你的表结构
@@ -84,6 +88,7 @@ BAD_TYPES = ('在线工具', '官网', '其他')
 
 | 脚本 | 功能 |
 |---|---|
+| `entry.py` | 日常增删改统一入口（add/update/delete，自动查重+重编号+备份） |
 | `verify_table.py` | 7 项指标验证（质量闸门） |
 | `sort_table.py` | 类别优先排序 + 重编号 |
 | `style_table.py` / `style_index.py` | 统一美化（书签表 / 索引表） |
@@ -94,6 +99,7 @@ BAD_TYPES = ('在线工具', '官网', '其他')
 | `import_html.py` | 浏览器书签 HTML → 待入库清单 |
 | `report_summary.py` | 全库统计报告 |
 | `check_urls.py` | URL 死链检测 |
+| `export_bookmarks.py` | 表格 → 浏览器书签 HTML（多机同步） |
 
 ## 适用场景
 

@@ -95,6 +95,20 @@ AI 日报 / 公众号稿 / 插图规划 / 定稿发布链路 skill。
 
 - [maintain-bookmark-tables](./maintain-bookmark-tables/)
 
+### `douban-movie-collector`
+
+电影收藏录入工具。用户提供电影名 + 网盘链接（支持一次批量多部），通过豆瓣补全导演、类型、国家地区、年份、豆瓣评分、简介等信息，查重后直接写入电影收藏表 xlsx（序号自动顺延、观看状态默认「想看」、收藏日期默认今天）。
+
+适用场景：
+
+- 收藏 / 录入电影，只需给出名字和网盘链接
+- 批量补录多部电影到同一个收藏表
+- 自动从豆瓣补全元数据并去重，备注只保留简介、不写片源信息
+
+目录：
+
+- [douban-movie-collector](./douban-movie-collector/)
+
 ## 当前仓库结构
 
 ```text
@@ -108,7 +122,8 @@ yz-skills/
 ├─ ai-daily-digest/
 ├─ ai-daily-digest-docs/
 ├─ product-research/
-└─ maintain-bookmark-tables/
+├─ maintain-bookmark-tables/
+└─ douban-movie-collector/
 ```
 
 ## 目录约定

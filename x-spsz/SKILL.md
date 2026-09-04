@@ -1,5 +1,6 @@
 ---
 name: x-spsz
+version: 0.01
 description: 生成个人 X (Twitter) 平台中文深度解读卡片。用于把一段素材(采访/新闻/演讲/时间点对比等)整理成 3:4 比例、4K 超清、留白克制、@spsz0831 落款的中文信息图。基于 OpenAI GPT Image 2 (ChatGPT 最新网页端)生图,Skill 已固化 ChatGPT 端 prompt 前缀,直接拷贝即可用。
 trigger:
   - 做张推特图

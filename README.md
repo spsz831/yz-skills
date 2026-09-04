@@ -109,6 +109,27 @@ AI 日报 / 公众号稿 / 插图规划 / 定稿发布链路 skill。
 
 - [douban-movie-collector](./douban-movie-collector/)
 
+### `x-spsz`
+
+X (Twitter) 平台个人深度解读卡片生成 skill。把一段素材（采访 / 新闻 / 演讲 / 时间点对比等）整理成 3:4 比例、4K 超清、留白克制的中文信息图，落款只放 `@spsz0831`。
+
+适用场景：
+
+- 把素材做成可发 X 的中文深度解读卡片（自媒体卡，不是资讯搬运）
+- 生成 OpenAI GPT Image 2 的完整 ChatGPT 端 prompt（前缀已固化：3:4 / 4K / 9 段版式）
+- 生成前后按 checklist 自检（原文/意译标注、主标题钩子、我的判断 ≥ 3 行、全角标点）
+
+核心约束：
+
+- 落款只放 `@spsz0831`，不写 slogan
+- 主标题与收束金句必须自写，不能搬素材原话
+- 每条证据必须标注 [原文] 或 [意译]
+- 生图工具固定：ChatGPT 最新网页端 + GPT Image 2 + 3:4 + 4K
+
+目录：
+
+- [x-spsz](./x-spsz/)
+
 ## 当前仓库结构
 
 ```text
@@ -123,7 +144,8 @@ yz-skills/
 ├─ ai-daily-digest-docs/
 ├─ product-research/
 ├─ maintain-bookmark-tables/
-└─ douban-movie-collector/
+├─ douban-movie-collector/
+└─ x-spsz/
 ```
 
 ## 目录约定

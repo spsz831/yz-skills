@@ -132,7 +132,7 @@ X (Twitter) 平台个人深度解读卡片生成 skill。把一段素材（采�
 
 ### `ai-people-tracker`
 
-AI 人物追踪表新增人物流水线。用户在 `D:\yangzhen\workskill\` 目录下的追踪表里添加新人物时，按本 skill 的 8 步流程操作：改 `MAIN_ROWS` → 生成 → 公式校验 → 结构验证 → 替换 xlsx。附带字段写作规范（圈层枚举、国别二选一、序号连续、存疑标「待核实」等）与 6 个踩坑备忘录（双 patch / 模板垃圾 / 列错位 / 文件锁 / 编码 / PersonNames 失效）。
+AI 人物追踪表新增人物流水线。用户在 `D:\yangzhen\workskill\` 目录下的追踪表里添加新人物时，按本 skill 的 8 步流程操作：改 `MAIN_ROWS` → 生成 → 公式校验 → 结构验证 → 替换 xlsx。附带字段写作规范（圈层枚举、国别二选一、序号连续、存疑标「待核实」等）与 7 个踩坑备忘录（双 patch / 模板垃圾 / 列错位 / 文件锁 / 编码 / PersonNames 失效 / _data_style 列偏移）。
 
 适用场景：
 

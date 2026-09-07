@@ -1,6 +1,6 @@
 ---
 name: ai-people-tracker
-version: 0.1.0
+version: 0.1.1
 description: AI 人物追踪表新增人物流程。用户在 D:\yangzhen\workskill\ 目录下的 AI 人物追踪表中添加新人物时，本 skill 固化「改数据 → 跑生成 → 双验证 → 替换文件」的完整流水线与字段写作规范，避免反复踩坑。
 trigger:
   - 给追踪表加人
@@ -37,10 +37,10 @@ trigger:
 | 打包脚本 | 同上目录下的 `scripts/xlsx_pack.py` |
 | 公式校验脚本 | 同上目录下的 `scripts/formula_check.py` |
 
-## 3. 字段写作规范（MAIN_ROWS 每行 13 列）
+## 3. 字段写作规范（MAIN_ROWS 每行 14 列）
 
 ```
-[序号, 姓名, 英文名, 机构与职位, 圈层, 国别,
+[序号, 姓名, 外号/昵称, 英文名, 机构与职位, 圈层, 国别,
        观点立场, 立场变化, 代表事件, 发声渠道,
        关注优先级, "", 备注]
 ```
@@ -65,7 +65,7 @@ trigger:
 ### 3.6 发声渠道
 不限 X 平台。可以是：`X @用户名` / `微博@用户名` / `B站/微博 @名字` / `官网/博客` / `访谈为主` / `(无个人账号)发布会为主` 等。
 
-### 3.7 备注（第13列）
+### 3.7 备注（第14列，最后一列）
 - 信息未经核实时：**必须**在备注末尾标注「待核实」或「存疑」
 - 典型场景：入职传闻、职位变更、上市细节、争议说法
 - 示例：`「2026 加入 OpenAI」一说待核实`；`「东方算芯董事长」一说存疑，以清华教授为准`
@@ -89,10 +89,10 @@ cp -r /c/Users/zhen/.claude/plugins/cache/minimax-skills/minimax-skills/1.0.0/sk
 > ⚠️ **必须每次 fresh 拷贝**。直接复用旧目录会导致 styles.xml 被双 patch（cellXfs 13-21 重复写入，验证脚本报 xf borderId=0）。
 
 ### Step 2 — 编辑 MAIN_ROWS
-用 Edit 工具打开 `D:\yangzhen\workskill\build_ai_people_xlsx.py`，在 `MAIN_ROWS = [` 列表末尾追加新行（保持 13 个元素）。
+用 Edit 工具打开 `D:\yangzhen\workskill\build_ai_people_xlsx.py`，在 `MAIN_ROWS = [` 列表末尾追加新行（保持 14 个元素）。
 
 编辑完成后**快速自检**：
-- 新行元素个数 == 13
+- 新行元素个数 == 14
 - 序号连续，没有重复
 - 备注里如果有「待核实/存疑」，前面已做标注
 
@@ -141,6 +141,7 @@ rm -rf /tmp/ai_people_work /tmp/AI人物追踪表_new.xlsx
 | 文件被占用 | cp 报 PermissionError | 让用户关 Excel/WPS 后重试 |
 | UnicodeEncodeError | Python 报 GBK 编码错误 | 加 `export PYTHONIOENCODING=utf-8` |
 | PersonNames 失效 | 言论库姓名下拉报错 | 检查 workbook.xml 的 definedName：`人物主表!$B$3:$B${last_row}` |
+| `_data_style` 列偏移 | verify 报 M列样式错误（s=15而非18） | `_data_style` 函数需传入 `formula_col` 参数，计算 `hdr_ci = ci - (1 if ci > formula_col else 0)` 修正 header 索引 |
 
 ## 6. 新增列/改结构（超出本 skill 职责）
 

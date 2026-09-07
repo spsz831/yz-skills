@@ -1,6 +1,6 @@
 ---
 name: ai-people-tracker
-version: 0.1.1
+version: 0.2.0
 description: AI 人物追踪表新增人物流程。用户在 D:\yangzhen\workskill\ 目录下的 AI 人物追踪表中添加新人物时，本 skill 固化「改数据 → 跑生成 → 双验证 → 替换文件」的完整流水线与字段写作规范，避免反复踩坑。
 trigger:
   - 给追踪表加人
@@ -30,10 +30,11 @@ trigger:
 | 项目目录 | `D:\yangzhen\workskill\` |
 | 生成脚本 | `build_ai_people_xlsx.py` |
 | 独立验证脚本 | `verify_ai_people_xlsx.py [xlsx路径]` |
-| 输出目标 | `AI人物追踪表.xlsx`（2 sheet：人物主表 + 言论库） |
+| 输出目标 | `AI人物追踪表.xlsx`（单 sheet：人物主表，言论库已于 v0.2 删除） |
 | Python | `/c/Users/zhen/.local/bin/python3.12.exe` |
 | 环境编码 | `export PYTHONIOENCODING=utf-8`（Windows GBK 默认，不 export 会 UnicodeEncodeError） |
 | minimax-xlsx 模板根 | `C:/Users/zhen/.claude/plugins/cache/minimax-skills/minimax-skills/1.0.0/skills/minimax-xlsx/templates/minimal_xlsx` |
+| ⚠️ 言论库已删除 | 不维护 QUOTE_ROWS；如用户要求加言论，改走独立流程，不碰 build_ai_people_xlsx.py |
 | 打包脚本 | 同上目录下的 `scripts/xlsx_pack.py` |
 | 公式校验脚本 | 同上目录下的 `scripts/formula_check.py` |
 

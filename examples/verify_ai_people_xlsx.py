@@ -54,8 +54,8 @@ print(f"sharedStrings: count={shared.get('count')} unique={shared.get('uniqueCou
 # 3. 每个 sheet
 expect = {
     "xl/worksheets/sheet1.xml": dict(title="AI 人物追踪表(2026-09)",
-                                     data_rows=83, ncols=14, formulas=83, merge="A1:N1",
-                                     first="奥特曼", last="周鸿祎", dv=3),
+                                     data_rows=84, ncols=14, formulas=84, merge="A1:N1",
+                                     first="奥特曼", last="玉伯", dv=3),
     "xl/worksheets/sheet2.xml": dict(title="AI 人物言论库(持续追加)",
                                      data_rows=31, ncols=8, formulas=0, merge="A1:H1",
                                      first="奥特曼", last="王兴兴", dv=3),
@@ -139,7 +139,7 @@ def val(ref):
         return (c, si[int(v.text)])
     return (c, v.text)  # 数字/公式缓存值原样返回
 
-regions = {val(f"G{r}")[1] for r in range(3, 86)}
+regions = {val(f"G{r}")[1] for r in range(3, 87)}
 if regions != {"国内", "海外"}:
     fail(f"国别取值 {regions} != {{国内,海外}}")
 if val("G3")[1] != "海外" or val("G20")[1] != "国内":
@@ -174,7 +174,7 @@ if "存疑" not in (val("N62")[1] or ""):
     fail(f"N62 魏少军存疑备注缺失: {val('N62')[1]!r}")
 # 圈层取值全部在合法集合内(F列=圈层)
 VALID_CIRCLES = {"AI领军", "技术大神", "学者", "芯片硬件", "投资圈", "机器人", "巨头掌门", "AI应用"}
-bad = {val(f"F{r}")[1] for r in range(3, 86)} - VALID_CIRCLES - {None}
+bad = {val(f"F{r}")[1] for r in range(3, 87)} - VALID_CIRCLES - {None}
 if bad:
     fail(f"圈层非法取值: {bad}")
 print("内容抽查 OK: 国别=国内/海外, 新人物板块/存疑备注/圈层合法, M3 红粗, 空备注格带边框")
@@ -187,10 +187,10 @@ if dns is None:
     fail("workbook.xml 缺 definedNames")
 else:
     dn = dns.find('m:definedName[@name="PersonNames"]', NS)
-    if dn is None or "人物主表!$B$3:$B$85" not in (dn.text or ""):
+    if dn is None or "人物主表!$B$3:$B$86" not in (dn.text or ""):
         fail(f"PersonNames 定义异常: {dn.text if dn is not None else None}")
     else:
-        print("命名区域 OK: PersonNames = 人物主表!$B$3:$B$85")
+        print("命名区域 OK: PersonNames = 人物主表!$B$3:$B$86")
 # 言论库 B 列下拉应引用 PersonNames(非内嵌)
 s2 = ET.fromstring(z.read("xl/worksheets/sheet2.xml").decode("utf-8"))
 dv_b = s2.find('.//m:dataValidations/m:dataValidation[@sqref="B3:B500"]', NS)

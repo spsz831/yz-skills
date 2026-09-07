@@ -20,7 +20,7 @@ WORK = sys.argv[1] if len(sys.argv) > 1 else r"C:\Users\zhen\AppData\Local\Temp\
 # ---------- 人物主表数据 ----------
 MAIN_TITLE = "AI 人物追踪表(2026-09)"
 MAIN_HEADERS = ["序号", "姓名", "外号/昵称", "英文名", "机构与职位", "圈层", "国别",
-                "观点立场", "立场变化", "代表事件", "发声渠道", "关注优先级", "言论数", "备注"]
+                "观点立场", "立场变化", "代表事件", "发声渠道", "关注优先级", "备注"]
 
 MAIN_ROWS = [
     [1, "奥特曼", "OpenAI之父","Sam Altman", "OpenAI CEO", "AI领军", "海外",
@@ -283,74 +283,7 @@ MAIN_ROWS = [
 
 ]
 
-# ---------- 言论库数据 ----------
-QUOTE_TITLE = "AI 人物言论库(持续追加)"
-QUOTE_HEADERS = ["序号", "人物姓名", "圈层", "言论内容", "标注", "出处与场合", "时间", "主题标签"]
-
-QUOTE_ROWS = [
-    [1, "奥特曼", "AI领军", "我们正接近一个奇点,但它会是温和的", "意译(中)",
-     "个人博客《The Gentle Singularity》", "2025.6", "AGI时间表"],
-    [2, "奥特曼", "AI领军", "AI能力随投入指数提升,成本每年下降约10倍", "意译(中)",
-     "个人博客《Three Observations》", "2025.1", "Scaling"],
-    [3, "马斯克", "AI领军", "AI可能比核武器更危险", "原文(英)",
-     "推特", "2014.8", "风险警告"],
-    [4, "马斯克", "AI领军", "xAI的使命是理解宇宙的真实本质", "意译(中)",
-     "xAI发布会", "2023.7", "使命"],
-    [5, "阿莫迪", "AI领军", "治理得当的强AI,能把100年的科学进步压缩到5-10年", "意译(中)",
-     "博客《Machines of Loving Grace》", "2024.10", "乐观路线"],
-    [6, "阿莫迪", "AI领军", "强大AI可能在2026-2027年间到来,对齐必须先行", "意译(中)",
-     "媒体访谈", "2024", "时间表"],
-    [7, "哈萨比斯", "AI领军", "AGI有望在2030年前后实现", "意译(中)",
-     "媒体访谈", "2024", "时间表"],
-    [8, "哈萨比斯", "AI领军", "AI for Science是AI最大的正向机会", "意译(中)",
-     "诺贝尔奖相关访谈", "2024.10", "AI4S"],
-    [9, "苏茨克维", "AI领军", "预训练时代将终结——数据如同化石燃料", "意译(中)",
-     "NeurIPS演讲", "2024.12", "范式转移"],
-    [10, "卡帕西", "技术大神", "LLM本质上是一种新型操作系统", "意译(中)",
-     "视频《An Intro to LLMs》", "2023.11", "技术认知"],
-    [11, "卡帕西", "技术大神", "软件2.0:由数据而非代码定义的程序", "意译(中)",
-     "博客《Software 2.0》", "2017", "范式转移"],
-    [12, "杨立昆", "技术大神", "自回归LLM是通往AGI道路上的岔路", "意译(中)",
-     "社交媒体/访谈(多次)", "2024", "技术路线"],
-    [13, "杨立昆", "技术大神", "AI末日论是一种新宗教", "意译(中)",
-     "社交媒体", "2024", "反末日论"],
-    [14, "辛顿", "技术大神", "AI有10-20%的概率在10-20年内导致人类灭绝", "意译(中)",
-     "BBC采访", "2024.12", "生存风险"],
-    [15, "辛顿", "技术大神", "我离开Google,是为了能自由谈论AI风险", "意译(中)",
-     "离职访谈", "2023.5", "风险警告"],
-    [16, "本吉奥", "技术大神", "AI发展速度已超出各国监管速度,国际协调刻不容缓", "意译(中)",
-     "《国际AI安全报告》结论", "2025.1", "监管"],
-    [17, "李飞飞", "学者", "空间智能是AI的下一个前沿——让AI理解三维世界", "意译(中)",
-     "TED演讲", "2024.4", "技术路线"],
-    [18, "吴恩达", "学者", "AI是新的电力", "原文(英)",
-     "斯坦福演讲(多次引用)", "2017起", "技术认知"],
-    [19, "黄仁勋", "芯片硬件", "买得越多,省得越多", "原文(英)",
-     "COMPUTEX主题演讲", "2024.6", "算力商业"],
-    [20, "黄仁勋", "芯片硬件", "推理时代的算力需求将远超训练", "意译(中)",
-     "GTC大会", "2025.3", "算力"],
-    [21, "皮查伊", "AI领军", "AI是比火与电更深远的技术", "原文(英)",
-     "媒体采访(多次)", "2023", "技术定位"],
-    [22, "安德森", "投资圈", "AI将拯救世界,而不是毁灭它", "意译(中)",
-     "博客《Why AI Will Save the World》", "2023.6", "技术乐观"],
-    [23, "霍夫曼", "投资圈", "AI放大人的能动性,而非取代人", "意译(中)",
-     "《Superagency》/TED", "2025.2", "人机关系"],
-    [24, "科斯拉", "投资圈", "AI可实现免费医生与导师,但风险同样真实", "意译(中)",
-     "投资备忘录", "2023.4", "机会与风险"],
-    [25, "李开复", "投资圈", "大模型进入应用为王的时代,技术与场景结合才有价值", "意译(中)",
-     "媒体访谈", "2024", "商业化"],
-    [26, "梁文锋", "AI领军", "我们的目标是AGI,而不是快速商业化", "意译(中)",
-     "《暗涌》访谈", "2024.7", "AGI信仰"],
-    [27, "梁文锋", "AI领军", "中国AI不能永远处在跟随的位置", "意译(中)",
-     "《暗涌》访谈", "2024.7", "中国AI定位"],
-    [28, "杨植麟", "AI领军", "把上下文越做越长,是通往AGI的关键路径之一", "意译(中)",
-     "媒体访谈", "2024", "技术路线"],
-    [29, "李彦宏", "AI领军", "闭源模型能力持续领先,开源模型的能力会落后", "意译(中)",
-     "百度世界大会(引发争议)", "2024.11", "开源闭源之争"],
-    [30, "朱啸虎", "投资圈", "大模型创业烧钱换不来壁垒,应用层才有价值", "意译(中)",
-     "媒体访谈(多次)", "2024", "投资逻辑"],
-    [31, "王兴兴", "机器人", "人形机器人有望在数年内进入千家万户", "意译(中)",
-     "媒体采访", "2025.2", "机器人时间表"],
-]
+# 言论库已删除：数据价值低、维护成本高，主表已独立承载信息。
 
 # ---------- sharedStrings ----------
 _str_index = {}
@@ -570,29 +503,17 @@ def main():
     # 2. 两个 sheet
     last_row = 2 + len(MAIN_ROWS)  # 主表数据末行(68 人 → 70)
     CIRCLE_OPTS = "AI领军,技术大神,学者,芯片硬件,投资圈,机器人,巨头掌门,AI应用"
-    main_align = {1: "center", 2: "center", 3: "center", 5: "center", 6: "center", 12: "center"}  # 1=序号,2=姓名,3=外号,5=圈层,6=国别,12=关注优先级
+    main_align = {1: "center", 2: "center", 3: "center", 5: "center", 6: "center", 11: "center"}  # 1=序号,2=姓名,3=外号,5=圈层,6=国别,11=关注优先级
     main_xml = build_sheet(
         MAIN_TITLE, MAIN_HEADERS, MAIN_ROWS, main_align,
-        widths=[6, 10, 8, 16, 30, 11, 8, 24, 30, 34, 20, 10, 9, 26],
-        formula_col=12,
-        formula_fn=lambda r: f"COUNTIF(言论库!B:B,B{r})",
+        widths=[6, 10, 8, 16, 30, 11, 8, 24, 30, 34, 20, 9, 26],
+        formula_col=None,
+        formula_fn=None,
         row_ht=28,
         data_validations=[
             (f"F3:F{last_row}", f'"{CIRCLE_OPTS}"'),
             (f"G3:G{last_row}", '"国内,海外"'),
-            (f"L3:L{last_row}", '"高,中,低"'),
-        ],
-    )
-    quote_align = {1: "center", 2: "center", 3: "center", 5: "center", 7: "center", 8: "center"}
-    quote_xml = build_sheet(
-        QUOTE_TITLE, QUOTE_HEADERS, QUOTE_ROWS, quote_align,
-        widths=[6, 10, 11, 46, 11, 28, 10, 13],
-        row_ht=26, tab_selected=False,
-        data_validations=[
-            # 68 人名单超 255 字符,用命名区域 PersonNames 引用主表 B 列
-            ("B3:B500", "PersonNames"),
-            ("C3:C500", f'"{CIRCLE_OPTS}"'),
-            ("E3:E500", '"意译(中),原文(英),原文(中)"'),
+            (f"K3:K{last_row}", '"高,中,低"'),
         ],
     )
 
@@ -614,12 +535,7 @@ def main():
           'windowHeight="10960"/></bookViews>',
           '<sheets>',
           '<sheet name="人物主表" sheetId="1" r:id="rId1"/>',
-          '<sheet name="言论库" sheetId="2" r:id="rId4"/>',
           '</sheets>',
-          # PersonNames:言论库「人物姓名」下拉的来源(引用主表 B 列,名单超 255 字符无法内嵌)
-          '<definedNames>',
-          f'<definedName name="PersonNames">人物主表!$B$3:$B${2 + len(MAIN_ROWS)}</definedName>',
-          '</definedNames>',
           '<calcPr calcId="191029"/>',
           '</workbook>']
 
@@ -635,9 +551,6 @@ def main():
             '<Relationship Id="rId3" '
             'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" '
             'Target="sharedStrings.xml"/>',
-            '<Relationship Id="rId4" '
-            'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
-            'Target="worksheets/sheet2.xml"/>',
             '</Relationships>']
 
     # 6. [Content_Types].xml
@@ -650,8 +563,6 @@ def main():
           'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
           '<Override PartName="/xl/worksheets/sheet1.xml" '
           'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
-          '<Override PartName="/xl/worksheets/sheet2.xml" '
-          'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
           '<Override PartName="/xl/styles.xml" '
           'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>',
           '<Override PartName="/xl/sharedStrings.xml" '
@@ -660,7 +571,6 @@ def main():
 
     writes = {
         "xl/worksheets/sheet1.xml": main_xml,
-        "xl/worksheets/sheet2.xml": quote_xml,
         "xl/sharedStrings.xml": "\n".join(sst),
         "xl/workbook.xml": "\n".join(wb),
         "xl/_rels/workbook.xml.rels": "\n".join(rels),

@@ -54,13 +54,10 @@ print(f"sharedStrings: count={shared.get('count')} unique={shared.get('uniqueCou
 # 3. 每个 sheet
 expect = {
     "xl/worksheets/sheet1.xml": dict(title="AI 人物追踪表(2026-09)",
-                                     data_rows=84, ncols=14, formulas=84, merge="A1:N1",
+                                     data_rows=84, ncols=13, formulas=0, merge="A1:M1",
                                      first="奥特曼", last="玉伯", dv=3),
-    "xl/worksheets/sheet2.xml": dict(title="AI 人物言论库(持续追加)",
-                                     data_rows=31, ncols=8, formulas=0, merge="A1:H1",
-                                     first="奥特曼", last="王兴兴", dv=3),
 }
-border_styles = {"15", "16", "17", "18", "19", "20", "21"}
+border_styles = {"15", "16", "18", "19", "20", "21"}
 for part, exp in expect.items():
     root = ET.fromstring(z.read(part).decode("utf-8"))
     mc = root.find("m:mergeCells", NS)
@@ -139,26 +136,26 @@ def val(ref):
         return (c, si[int(v.text)])
     return (c, v.text)  # 数字/公式缓存值原样返回
 
-regions = {val(f"G{r}")[1] for r in range(3, 87)}
+regions = {val(f"G{r}")[1] for r in range(3, 87)}  # G=国别, data_rows=84 → 行3~86
 if regions != {"国内", "海外"}:
     fail(f"国别取值 {regions} != {{国内,海外}}")
 if val("G3")[1] != "海外" or val("G20")[1] != "国内":
     fail("国别分组抽查失败(奥特曼应海外/李开复应国内)")
-# 发声渠道=K列(居中),优先级=M列(18=白底红粗),备注=N列
+# 发声渠道=K列(居中),优先级=L列(18=白底红粗),备注=M列
 if "X @sama" not in (val("K3")[1] or ""):
     fail(f"K3 发声渠道异常: {val('K3')[1]!r}")
-if val("M3")[0].get("s") != "18":
-    fail(f"M3 优先级高样式 != 18")
-# 空备注:奥特曼 N3 应为带样式空格
-m3, m3v = val("N3")
+if val("L3")[0].get("s") != "18":
+    fail(f"L3 优先级高样式 != 18")
+# 空备注:奥特曼 M3 应为带样式空格
+m3, m3v = val("M3")
 if m3 is None or m3v is not None or m3.get("s") not in border_styles:
-    fail(f"N3 空备注格异常: s={getattr(m3,'get',lambda k:None)('s')} v={m3v}")
-# 辛顿备注(N10 行=10)
-if "核实" not in (val("N10")[1] or ""):
-    fail(f"N10 辛顿备注缺失: {val('N10')[1]!r}")
+    fail(f"M3 空备注格异常: s={getattr(m3,'get',lambda k:None)('s')} v={m3v}")
+# 辛顿备注(M10 行=10)
+if "核实" not in (val("M10")[1] or ""):
+    fail(f"M10 辛顿备注缺失: {val('M10')[1]!r}")
 # 新增人物抽查:扎克伯格(行28)、稚晖君(行49)、梁孟松(行57)、王君行(行84)
 spots = {
-    "B28": "扎克伯格", "F28": "巨头掌门", "G28": "海外", "M28": "高",
+    "B28": "扎克伯格", "F28": "巨头掌门", "G28": "海外", "L28": "高",
     "B49": "彭志辉(稚晖君)", "F49": "机器人",
     "B57": "梁孟松", "F57": "芯片硬件",
     "B84": "王君行", "F84": "技术大神",
@@ -168,35 +165,21 @@ for ref, want in spots.items():
     if got != want and not (isinstance(want, str) and want.isdigit() and got == want):
         fail(f"{ref} 期望 {want!r} 实际 {got!r}")
 # 存疑人物备注抽查:沙泽尔(行35)、魏少军(行62)
-if "待核实" not in (val("N35")[1] or ""):
-    fail(f"N35 沙泽尔待核实备注缺失: {val('N35')[1]!r}")
-if "存疑" not in (val("N62")[1] or ""):
-    fail(f"N62 魏少军存疑备注缺失: {val('N62')[1]!r}")
+if "待核实" not in (val("M35")[1] or ""):
+    fail(f"M35 沙泽尔待核实备注缺失: {val('M35')[1]!r}")
+if "存疑" not in (val("M62")[1] or ""):
+    fail(f"M62 魏少军存疑备注缺失: {val('M62')[1]!r}")
 # 圈层取值全部在合法集合内(F列=圈层)
 VALID_CIRCLES = {"AI领军", "技术大神", "学者", "芯片硬件", "投资圈", "机器人", "巨头掌门", "AI应用"}
 bad = {val(f"F{r}")[1] for r in range(3, 87)} - VALID_CIRCLES - {None}
 if bad:
     fail(f"圈层非法取值: {bad}")
-print("内容抽查 OK: 国别=国内/海外, 新人物板块/存疑备注/圈层合法, M3 红粗, 空备注格带边框")
+print("内容抽查 OK: 国别=国内/海外, 新人物板块/存疑备注/圈层合法, L3 红粗, 空备注格带边框")
 
-# 5. 命名区域 PersonNames(言论库姓名下拉来源)
+# 5. workbook 无公式,无命名区域(言论库已删)
 wbx = z.read("xl/workbook.xml").decode("utf-8")
-wbr = ET.fromstring(wbx)
-dns = wbr.find("m:definedNames", NS)
-if dns is None:
-    fail("workbook.xml 缺 definedNames")
-else:
-    dn = dns.find('m:definedName[@name="PersonNames"]', NS)
-    if dn is None or "人物主表!$B$3:$B$86" not in (dn.text or ""):
-        fail(f"PersonNames 定义异常: {dn.text if dn is not None else None}")
-    else:
-        print("命名区域 OK: PersonNames = 人物主表!$B$3:$B$86")
-# 言论库 B 列下拉应引用 PersonNames(非内嵌)
-s2 = ET.fromstring(z.read("xl/worksheets/sheet2.xml").decode("utf-8"))
-dv_b = s2.find('.//m:dataValidations/m:dataValidation[@sqref="B3:B500"]', NS)
-f1 = dv_b.find("m:formula1", NS) if dv_b is not None else None
-if f1 is None or f1.text != "PersonNames":
-    fail(f"言论库姓名下拉应引用 PersonNames, 实际: {f1.text if f1 is not None else None}")
+if "PersonNames" in wbx:
+    fail("workbook.xml 不应含 PersonNames(言论库已删除)")
 if "calcId" not in wbx:
     fail("workbook.xml 缺 calcPr")
 z.close()

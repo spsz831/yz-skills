@@ -54,8 +54,8 @@ print(f"sharedStrings: count={shared.get('count')} unique={shared.get('uniqueCou
 # 3. 每个 sheet
 expect = {
     "xl/worksheets/sheet1.xml": dict(title="AI 人物追踪表(2026-09)",
-                                     data_rows=84, ncols=13, formulas=0, merge="A1:M1",
-                                     first="奥特曼", last="玉伯", dv=3),
+                                     data_rows=87, ncols=13, formulas=0, merge="A1:M1",
+                                     first="奥特曼", last="黄碧薇", dv=3),
 }
 border_styles = {"15", "16", "18", "19", "20", "21"}
 for part, exp in expect.items():
@@ -136,7 +136,7 @@ def val(ref):
         return (c, si[int(v.text)])
     return (c, v.text)  # 数字/公式缓存值原样返回
 
-regions = {val(f"G{r}")[1] for r in range(3, 87)}  # G=国别, data_rows=84 → 行3~86
+regions = {val(f"G{r}")[1] for r in range(3, 90)}  # G=国别, data_rows=87 → 行3~89
 if regions != {"国内", "海外"}:
     fail(f"国别取值 {regions} != {{国内,海外}}")
 if val("G3")[1] != "海外" or val("G20")[1] != "国内":
@@ -159,19 +159,22 @@ spots = {
     "B49": "彭志辉(稚晖君)", "F49": "机器人",
     "B57": "梁孟松", "F57": "芯片硬件",
     "B84": "王君行", "F84": "技术大神",
+    "B87": "格雷格·布罗克曼", "F87": "AI领军",
+    "B88": "盛颖", "F88": "AI领军",
+    "B89": "黄碧薇", "F89": "学者",
 }
 for ref, want in spots.items():
     got = val(ref)[1]
     if got != want and not (isinstance(want, str) and want.isdigit() and got == want):
         fail(f"{ref} 期望 {want!r} 实际 {got!r}")
-# 存疑人物备注抽查:沙泽尔(行35)、魏少军(行62)
-if "待核实" not in (val("M35")[1] or ""):
-    fail(f"M35 沙泽尔待核实备注缺失: {val('M35')[1]!r}")
+# 沙泽尔已确认加盟OpenAI、魏少军仍存疑
+if "OpenAI" not in (val("M35")[1] or ""):
+    fail(f"M35 沙泽尔备注未更新为已确认: {val('M35')[1]!r}")
 if "存疑" not in (val("M62")[1] or ""):
     fail(f"M62 魏少军存疑备注缺失: {val('M62')[1]!r}")
 # 圈层取值全部在合法集合内(F列=圈层)
 VALID_CIRCLES = {"AI领军", "技术大神", "学者", "芯片硬件", "投资圈", "机器人", "巨头掌门", "AI应用"}
-bad = {val(f"F{r}")[1] for r in range(3, 87)} - VALID_CIRCLES - {None}
+bad = {val(f"F{r}")[1] for r in range(3, 90)} - VALID_CIRCLES - {None}
 if bad:
     fail(f"圈层非法取值: {bad}")
 print("内容抽查 OK: 国别=国内/海外, 新人物板块/存疑备注/圈层合法, L3 红粗, 空备注格带边框")

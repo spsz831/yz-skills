@@ -54,7 +54,7 @@ print(f"sharedStrings: count={shared.get('count')} unique={shared.get('uniqueCou
 # 3. 每个 sheet
 expect = {
     "xl/worksheets/sheet1.xml": dict(title="AI 人物追踪表(2026-09)",
-                                     data_rows=87, ncols=13, formulas=0, merge="A1:M1",
+                                     data_rows=87, ncols=11, formulas=0, merge="A1:K1",
                                      first="奥特曼", last="黄碧薇", dv=3),
 }
 border_styles = {"15", "16", "18", "19", "20", "21"}
@@ -141,21 +141,21 @@ if regions != {"国内", "海外"}:
     fail(f"国别取值 {regions} != {{国内,海外}}")
 if val("G3")[1] != "海外" or val("G20")[1] != "国内":
     fail("国别分组抽查失败(奥特曼应海外/李开复应国内)")
-# 发声渠道=K列(居中),优先级=L列(18=白底红粗),备注=M列
-if "X @sama" not in (val("K3")[1] or ""):
-    fail(f"K3 发声渠道异常: {val('K3')[1]!r}")
-if val("L3")[0].get("s") != "18":
-    fail(f"L3 优先级高样式 != 18")
-# 空备注:奥特曼 M3 应为带样式空格
-m3, m3v = val("M3")
+# 发声渠道=I列(居中),优先级=J列(18=白底红粗),备注=K列
+if "X @sama" not in (val("I3")[1] or ""):
+    fail(f"I3 发声渠道异常: {val('I3')[1]!r}")
+if val("J3")[0].get("s") != "18":
+    fail(f"J3 优先级高样式 != 18")
+# 空备注:奥特曼 K3 应为带样式空格
+m3, m3v = val("K3")
 if m3 is None or m3v is not None or m3.get("s") not in border_styles:
-    fail(f"M3 空备注格异常: s={getattr(m3,'get',lambda k:None)('s')} v={m3v}")
-# 辛顿备注(M10 行=10)
-if "核实" not in (val("M10")[1] or ""):
-    fail(f"M10 辛顿备注缺失: {val('M10')[1]!r}")
+    fail(f"K3 空备注格异常: s={getattr(m3,'get',lambda k:None)('s')} v={m3v}")
+# 辛顿备注(K10 行=10)
+if "核实" not in (val("K10")[1] or ""):
+    fail(f"K10 辛顿备注缺失: {val('K10')[1]!r}")
 # 新增人物抽查:扎克伯格(行28)、稚晖君(行49)、梁孟松(行57)、王君行(行84)
 spots = {
-    "B28": "扎克伯格", "F28": "巨头掌门", "G28": "海外", "L28": "高",
+    "B28": "扎克伯格", "F28": "巨头掌门", "G28": "海外", "J28": "高",
     "B49": "彭志辉(稚晖君)", "F49": "机器人",
     "B57": "梁孟松", "F57": "芯片硬件",
     "B84": "王君行", "F84": "技术大神",
@@ -168,10 +168,10 @@ for ref, want in spots.items():
     if got != want and not (isinstance(want, str) and want.isdigit() and got == want):
         fail(f"{ref} 期望 {want!r} 实际 {got!r}")
 # 沙泽尔已确认加盟OpenAI、魏少军仍存疑
-if "OpenAI" not in (val("M35")[1] or ""):
-    fail(f"M35 沙泽尔备注未更新为已确认: {val('M35')[1]!r}")
-if "存疑" not in (val("M62")[1] or ""):
-    fail(f"M62 魏少军存疑备注缺失: {val('M62')[1]!r}")
+if "OpenAI" not in (val("K35")[1] or ""):
+    fail(f"K35 沙泽尔备注未更新为已确认: {val('K35')[1]!r}")
+if "存疑" not in (val("K62")[1] or ""):
+    fail(f"K62 魏少军存疑备注缺失: {val('K62')[1]!r}")
 # 圈层取值全部在合法集合内(F列=圈层)
 VALID_CIRCLES = {"AI领军", "技术大神", "学者", "芯片硬件", "投资圈", "机器人", "巨头掌门", "AI应用"}
 bad = {val(f"F{r}")[1] for r in range(3, 90)} - VALID_CIRCLES - {None}

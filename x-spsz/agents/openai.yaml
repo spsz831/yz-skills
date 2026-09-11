@@ -1,0 +1,4 @@
+interface:
+  display_name: "X 深度解读卡片"
+  short_description: "制作彩色插画型 X 卡片、推文和生图方案"
+  default_prompt: "使用 $x-spsz，把以下素材制作成一张彩色主题插画型 X 卡片，并输出配套推文。"

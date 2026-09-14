@@ -17,6 +17,7 @@ JSON 数组元素字段（除 name 外均可选）：
 import sys, json, argparse, copy, re, os, tempfile
 from datetime import datetime, date
 from pathlib import Path
+from openpyxl.utils import get_column_letter
 from openpyxl import load_workbook
 
 
@@ -76,6 +77,14 @@ def as_media_type(value):
     if value not in MEDIA_TYPES:
         raise ValueError(f"media_type 必须是：{'、'.join(sorted(MEDIA_TYPES))}")
     return value
+
+
+def default_media_type(movie):
+    return as_media_type(movie.get("media_type") or ("电视剧" if movie.get("episodes") else "电影"))
+
+
+def sheet_for_media_type(media_type):
+    return "电影收藏" if media_type == "电影" else "电视剧收藏"
 
 
 def as_rating(value):
@@ -151,7 +160,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--xlsx", required=True)
     ap.add_argument("--json", required=True, help="影片信息 JSON 数组字符串")
-    ap.add_argument("--sheet", default=None, help="工作表名，默认自动找『电影收藏』否则第一个")
+    ap.add_argument("--sheet", default=None, help="工作表名；不指定时按媒体类型自动选择")
     ap.add_argument("--force", action="store_true", help="允许写入重复电影名")
     ap.add_argument("--update", action="store_true", help="命中已有条目时更新非空字段，而不是跳过")
     ap.add_argument("--no-schema", action="store_true", help="不自动追加媒体类型/豆瓣ID等可选列")
@@ -167,13 +176,22 @@ def main():
     xlsx_path = Path(args.xlsx)
     wb = load_workbook(xlsx_path)
 
-    # 定位工作表
-    if args.sheet and args.sheet in wb.sheetnames:
+    # 定位工作表；一批数据必须属于同一媒体类别，避免误写到同一张表。
+    if args.sheet:
+        if args.sheet not in wb.sheetnames:
+            print(json.dumps({"ok": False, "error": f"找不到工作表: {args.sheet}"}, ensure_ascii=False))
+            return
         ws = wb[args.sheet]
-    elif "电影收藏" in wb.sheetnames:
-        ws = wb["电影收藏"]
     else:
-        ws = wb.worksheets[0]
+        target_sheets = {sheet_for_media_type(default_media_type(m)) for m in movies}
+        if len(target_sheets) > 1:
+            print(json.dumps({"ok": False, "error": "一批数据包含电影和电视剧，请分成两批写入"}, ensure_ascii=False))
+            return
+        target_sheet = target_sheets.pop()
+        if target_sheet not in wb.sheetnames:
+            print(json.dumps({"ok": False, "error": f"找不到工作表: {target_sheet}"}, ensure_ascii=False))
+            return
+        ws = wb[target_sheet]
 
     # 表头 → 列号映射（第 1 行）；匹配时归一化：去空格和 "/"，兼容「国家/地区」「国家地区」等写法
     def _norm_header(s):
@@ -323,7 +341,7 @@ def main():
             cd.number_format = "yyyy-mm-dd"
         put(c_link, m.get("link"))
         put(c_code, m.get("code"))
-        normalized_media_type = media_type or ("电视剧" if m.get("episodes") else "电影")
+        normalized_media_type = media_type or default_media_type(m)
         put(c_media, normalized_media_type)
         put(c_episodes, as_positive_int(m.get("episodes"), "episodes"))
         put(c_seasons, as_positive_int(m.get("seasons"), "seasons"))
@@ -342,6 +360,9 @@ def main():
         if douban_id:
             existing_ids[douban_id] = row
         last_row, last_serial = row, last_serial + 1
+
+    if last_row >= 1:
+        ws.auto_filter.ref = f"A1:{get_column_letter(ws.max_column)}{last_row}"
 
     # 原子保存；被占用时不生成容易混淆的 _new 副本
     saved = str(xlsx_path)

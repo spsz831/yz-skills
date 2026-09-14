@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-append_movie.py — 向电影收藏表 xlsx 追加影片行
+append_movie.py — 向影视收藏表 xlsx 追加或更新影视条目
 用法：
-  python append_movie.py --xlsx <表格路径> --json '<JSON数组>' [--force]
+  python append_movie.py --xlsx <表格路径> --json '<JSON数组>' [--update] [--force]
 JSON 数组元素字段（除 name 外均可选）：
   name 必填；link 网盘链接；code 提取码；country 国家地区；year 年份；
   genre 类型；director 导演；rating 豆瓣评分；status 观看状态(默认"想看")；
   date 收藏日期(默认今天)；remark 备注
 行为：
   1. 按表头名定位列，序号自动顺延
-  2. 电影名查重（完全匹配），重复则跳过；--force 允许重复写入
-  3. 样式从上一数据行整行复制，日期列写 datetime 并强制 yyyy-mm-dd 格式
-  4. 保存时若文件被占用，改存 <原名>_new.xlsx 并在输出中标记 LOCKED
+  2. 按豆瓣 ID 或“片名+年份+媒体类型”定位条目，同名候选不唯一时跳过
+  3. 样式从上一数据行整行复制，日期列写 date 并使用 yyyy-mm-dd 格式
+  4. 使用同目录临时文件原子替换；目标文件被占用时返回 LOCKED，不生成 _new.xlsx
 输出：JSON 摘要（写入行号 / 跳过的重复项 / 保存状态）
 """
-import sys, json, argparse, shutil, copy, re
+import sys, json, argparse, copy, re, os, tempfile
 from datetime import datetime, date
 from pathlib import Path
 from openpyxl import load_workbook
@@ -26,6 +26,81 @@ def norm(s):
         return ""
     s = str(s).strip().replace("《", "").replace("》", "")
     return re.sub(r"\s+", "", s).lower()
+
+
+OPTIONAL_COLUMNS = [
+    "媒体类型", "集数", "季数", "豆瓣ID", "豆瓣链接", "评分核验日期",
+]
+MEDIA_TYPES = {"电影", "电视剧", "迷你剧", "综艺", "纪录片"}
+
+
+def ensure_columns(ws, header, enabled=True):
+    """为旧模板追加可选字段；已有表头不重复创建。"""
+    if not enabled:
+        return header
+    next_col = ws.max_column + 1
+    for name in OPTIONAL_COLUMNS:
+        key = re.sub(r"[\s/]+", "", name)
+        if key in header:
+            continue
+        cell = ws.cell(row=1, column=next_col)
+        cell.value = name
+        if ws.max_column >= 1:
+            src = ws.cell(row=1, column=max(1, next_col - 1))
+            cell._style = copy.copy(src._style)
+        header[key] = next_col
+        next_col += 1
+    return header
+
+
+def as_int(value, field):
+    if value in (None, ""):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{field} 必须是整数") from exc
+
+
+def as_positive_int(value, field):
+    value = as_int(value, field)
+    if value is not None and value < 1:
+        raise ValueError(f"{field} 必须大于等于 1")
+    return value
+
+
+def as_media_type(value):
+    if value in (None, ""):
+        return None
+    value = {"韩剧": "电视剧", "国剧": "电视剧", "美剧": "电视剧"}.get(str(value).strip(), str(value).strip())
+    if value not in MEDIA_TYPES:
+        raise ValueError(f"media_type 必须是：{'、'.join(sorted(MEDIA_TYPES))}")
+    return value
+
+
+def as_rating(value):
+    if value in (None, ""):
+        return None
+    try:
+        value = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("rating 必须是 0-10 的数字") from exc
+    if not 0 <= value <= 10:
+        raise ValueError("rating 必须在 0-10 之间")
+    return value
+
+
+def as_date(value, field="date"):
+    if value in (None, ""):
+        return date.today()
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, date):
+        return value
+    try:
+        return datetime.strptime(str(value), "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError(f"{field} 必须是 YYYY-MM-DD") from exc
 
 
 def strip_source_tags(text):
@@ -78,6 +153,8 @@ def main():
     ap.add_argument("--json", required=True, help="影片信息 JSON 数组字符串")
     ap.add_argument("--sheet", default=None, help="工作表名，默认自动找『电影收藏』否则第一个")
     ap.add_argument("--force", action="store_true", help="允许写入重复电影名")
+    ap.add_argument("--update", action="store_true", help="命中已有条目时更新非空字段，而不是跳过")
+    ap.add_argument("--no-schema", action="store_true", help="不自动追加媒体类型/豆瓣ID等可选列")
     args = ap.parse_args()
 
     movies = json.loads(args.json)
@@ -107,6 +184,7 @@ def main():
         v = ws.cell(row=1, column=c).value
         if v is not None and str(v).strip():
             header[_norm_header(v)] = c
+    header = ensure_columns(ws, header, enabled=not args.no_schema)
 
     def col(*names):
         """按候选名找列号（归一化后匹配）"""
@@ -127,12 +205,20 @@ def main():
     c_stat = col("观看状态")
     c_date = col("收藏日期")
     c_remark = col("备注")
+    c_media = col("媒体类型")
+    c_episodes = col("集数")
+    c_seasons = col("季数")
+    c_douban_id = col("豆瓣ID")
+    c_douban_url = col("豆瓣链接")
+    c_rating_date = col("评分核验日期")
     if c_name is None or c_link is None:
         print(json.dumps({"ok": False, "error": f"找不到关键列，现有表头: {list(header)}"}, ensure_ascii=False))
         return
 
-    # 找最后有内容的数据行（按名称列和链接列判断），并做查重索引
+    # 找最后有内容的数据行，并建立安全查重索引
     last_row, last_serial, existing = 1, 0, {}
+    existing_meta = {}
+    existing_ids = {}
     for r in range(2, ws.max_row + 1):
         nm = ws.cell(row=r, column=c_name).value
         lk = ws.cell(row=r, column=c_link).value if c_link else None
@@ -145,7 +231,14 @@ def main():
                 except (TypeError, ValueError):
                     pass
             if nm:
-                existing[norm(nm)] = r
+                key = norm(nm)
+                existing.setdefault(key, []).append(r)
+                existing_meta[r] = {
+                    "year": ws.cell(row=r, column=c_year).value if c_year else None,
+                    "media_type": ws.cell(row=r, column=c_media).value if c_media else None,
+                }
+            if c_douban_id and ws.cell(row=r, column=c_douban_id).value:
+                existing_ids[str(ws.cell(row=r, column=c_douban_id).value).strip()] = r
 
     written, skipped = [], []
     for m in movies:
@@ -154,8 +247,52 @@ def main():
             skipped.append({"movie": m, "reason": "缺少电影名"})
             continue
         key = norm(name)
-        if key in existing and not args.force:
-            skipped.append({"movie": name, "reason": f"已存在于第 {existing[key]} 行（查重命中）"})
+        douban_id = str(m.get("douban_id", "")).strip()
+        media_type = as_media_type(m.get("media_type"))
+        year = as_int(m.get("year"), "year")
+        if douban_id:
+            candidate_rows = [existing_ids[douban_id]] if douban_id in existing_ids else []
+        else:
+            candidate_rows = existing.get(key, [])
+            if len(candidate_rows) > 1 and (year is not None or media_type):
+                candidate_rows = [
+                    r for r in candidate_rows
+                    if (year is None or existing_meta[r]["year"] == year)
+                    and (not media_type or existing_meta[r]["media_type"] == media_type)
+                ]
+        if len(candidate_rows) > 1:
+            skipped.append({"movie": name, "reason": "同名条目不唯一，请提供 douban_id 或确认年份/媒体类型"})
+            continue
+        matched_row = candidate_rows[0] if candidate_rows else None
+        if matched_row and args.update:
+            def update(cno, val):
+                if cno and val not in (None, ""):
+                    ws.cell(row=matched_row, column=cno).value = val
+            update(c_name, name)
+            update(c_country, m.get("country"))
+            update(c_year, year)
+            update(c_genre, m.get("genre"))
+            update(c_dir, m.get("director"))
+            update(c_rate, as_rating(m.get("rating")))
+            update(c_stat, m.get("status"))
+            update(c_link, m.get("link"))
+            update(c_code, m.get("code"))
+            update(c_media, media_type)
+            update(c_episodes, as_positive_int(m.get("episodes"), "episodes"))
+            update(c_seasons, as_positive_int(m.get("seasons"), "seasons"))
+            update(c_douban_id, douban_id)
+            update(c_douban_url, m.get("douban_url"))
+            update(c_remark, strip_source_tags(m.get("remark")))
+            if c_rating_date and m.get("rating") not in (None, ""):
+                ws.cell(row=matched_row, column=c_rating_date).value = as_date(m.get("rating_date"), "rating_date")
+                ws.cell(row=matched_row, column=c_rating_date).number_format = "yyyy-mm-dd"
+            if c_date and m.get("date") not in (None, ""):
+                ws.cell(row=matched_row, column=c_date).value = as_date(m["date"])
+                ws.cell(row=matched_row, column=c_date).number_format = "yyyy-mm-dd"
+            written.append({"row": matched_row, "name": name, "action": "updated"})
+            continue
+        if matched_row and not args.force:
+            skipped.append({"movie": name, "reason": f"已存在于第 {matched_row} 行（查重命中，可用 --update 更新）"})
             continue
 
         row = last_row + 1
@@ -173,55 +310,65 @@ def main():
         put(c_idx, last_serial + 1)
         put(c_name, name)
         put(c_country, m.get("country"))
-        y = m.get("year")
-        put(c_year, int(y) if y not in (None, "") else None)
+        put(c_year, year)
         put(c_genre, m.get("genre"))
         put(c_dir, m.get("director"))
-        rt = m.get("rating")
-        if rt not in (None, ""):
-            try:
-                rt = float(rt)
-            except (TypeError, ValueError):
-                rt = None
+        rt = as_rating(m.get("rating"))
         put(c_rate, rt)
         put(c_stat, m.get("status") or "想看")
-        dt = m.get("date")
-        if dt in (None, ""):
-            dt = date.today()
-        elif isinstance(dt, str):
-            dt = datetime.strptime(dt, "%Y-%m-%d").date()
+        dt = as_date(m.get("date"))
         if c_date:
             cd = ws.cell(row=row, column=c_date)
             cd.value = dt
             cd.number_format = "yyyy-mm-dd"
         put(c_link, m.get("link"))
         put(c_code, m.get("code"))
+        normalized_media_type = media_type or ("电视剧" if m.get("episodes") else "电影")
+        put(c_media, normalized_media_type)
+        put(c_episodes, as_positive_int(m.get("episodes"), "episodes"))
+        put(c_seasons, as_positive_int(m.get("seasons"), "seasons"))
+        put(c_douban_id, douban_id or None)
+        put(c_douban_url, m.get("douban_url"))
+        if c_rating_date and rt is not None:
+            ws.cell(row=row, column=c_rating_date).value = as_date(m.get("rating_date"), "rating_date")
+            ws.cell(row=row, column=c_rating_date).number_format = "yyyy-mm-dd"
         # 备注清洗：只保留剧情简介，剥离片源/画质/字幕描述
         raw_remark = m.get("remark")
         put(c_remark, strip_source_tags(raw_remark))
 
         written.append({"row": row, "name": name, "serial": last_serial + 1})
-        existing[key] = row
+        existing.setdefault(key, []).append(row)
+        existing_meta[row] = {"year": year, "media_type": normalized_media_type}
+        if douban_id:
+            existing_ids[douban_id] = row
         last_row, last_serial = row, last_serial + 1
 
-    # 保存；被占用则改存 _new 副本
+    # 原子保存；被占用时不生成容易混淆的 _new 副本
     saved = str(xlsx_path)
     status = "ok"
+    temp_path = None
     try:
-        wb.save(xlsx_path)
+        fd, temp_name = tempfile.mkstemp(prefix=xlsx_path.stem + ".", suffix=".tmp.xlsx", dir=xlsx_path.parent)
+        os.close(fd)
+        temp_path = Path(temp_name)
+        wb.save(temp_path)
+        os.replace(temp_path, xlsx_path)
+        check_wb = load_workbook(xlsx_path, read_only=True, data_only=False)
+        check_ws = check_wb[ws.title]
+        for item in written:
+            if check_ws.cell(row=item["row"], column=c_name).value in (None, ""):
+                raise ValueError(f"保存后复核失败：第 {item['row']} 行名称为空")
+        check_wb.close()
     except PermissionError:
-        alt = xlsx_path.with_name(xlsx_path.stem + "_new.xlsx")
-        wb.save(alt)
-        saved = str(alt)
         status = "LOCKED"
-    except Exception as e:  # 其他异常：改存副本兜底
-        alt = xlsx_path.with_name(xlsx_path.stem + "_new.xlsx")
-        wb.save(alt)
-        saved = str(alt)
-        status = f"fallback:{type(e).__name__}"
+    except Exception as e:
+        status = f"error:{type(e).__name__}"
+    finally:
+        if temp_path and temp_path.exists():
+            temp_path.unlink()
 
     print(json.dumps({
-        "ok": True, "status": status, "saved_to": saved,
+        "ok": status == "ok", "status": status, "saved_to": saved if status == "ok" else None,
         "written": written, "skipped": skipped,
     }, ensure_ascii=False, indent=2))
 

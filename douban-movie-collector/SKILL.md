@@ -5,7 +5,7 @@ description: 影视收藏管理工具。用户提供电影或电视剧名称、�
 
 # douban-movie-collector
 
-当前版本：`1.1.1`
+当前版本：`1.2.0`
 
 将电影和电视剧整理到现有 xlsx 收藏表。用户说“收藏电影”“收藏电视剧”“录入影视”“修改网盘链接”“补全评分”时触发。
 
@@ -44,6 +44,16 @@ description: 影视收藏管理工具。用户提供电影或电视剧名称、�
 
 ### 0. 常用维护命令
 
+换电脑首次初始化：
+
+```powershell
+$py = 'python'
+$setup = '<Codex skills目录>/douban-movie-collector/scripts/setup_movie_collection.py'
+& $py $setup
+```
+
+初始化脚本会自动识别 `CODEX_HOME` 和当前用户目录，下载公开 skill，克隆私有 `movie-collection`，并把最新收藏表放入本机 skill 的 `examples` 目录。已有目录只更新 skill 文件，不删除其他用户文件。需要先登录 GitHub，并确保当前账号有私有仓库访问权限。也可以用 `--skills-dir` 和 `--collection-dir` 指定路径。
+
 数据审计：
 
 ```powershell
@@ -62,7 +72,7 @@ $sync = 'C:/Users/zhen/.codex/skills/douban-movie-collector/scripts/sync_movie_c
 & $py $sync
 ```
 
-同步命令只复制正式收藏表到 `spsz831/movie-collection`，提交前检查本地仓库是否干净；若有未提交修改会停止，不覆盖用户内容。skill 本身继续保存在 `spsz831/yz-skills`，与个人收藏表分开维护。
+同步命令会自动定位正式收藏表和 `movie-collection` 仓库，也支持 `--xlsx`、`--repo` 显式指定路径。提交前检查本地仓库是否干净；若有未提交修改会停止，不覆盖用户内容。skill 本身继续保存在 `spsz831/yz-skills`，与个人收藏表分开维护。
 
 ### 1. 解析与版本确认
 

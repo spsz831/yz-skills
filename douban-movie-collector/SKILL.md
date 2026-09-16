@@ -5,7 +5,7 @@ description: 影视收藏管理工具。用户提供电影或电视剧名称、�
 
 # douban-movie-collector
 
-当前版本：`1.1.0`
+当前版本：`1.1.1`
 
 将电影和电视剧整理到现有 xlsx 收藏表。用户说“收藏电影”“收藏电视剧”“录入影视”“修改网盘链接”“补全评分”时触发。
 
@@ -26,6 +26,7 @@ description: 影视收藏管理工具。用户提供电影或电视剧名称、�
 
 - `电影收藏` 不设置「集数」「季数」列；电影录入时不填写这两个字段。
 - `电视剧收藏` 保留「集数」「季数」列，用于记录电视剧和迷你剧的集数、季数。
+- 「观看状态」支持 `想看 / 已看 / 弃看 / 重看`，使用下拉选择；状态单元格分别使用浅蓝、浅绿、浅灰、浅橙标记，并保留工作表筛选。
 
 当前表格列顺序为：
 
@@ -41,6 +42,28 @@ description: 影视收藏管理工具。用户提供电影或电视剧名称、�
 
 ## 工作流
 
+### 0. 常用维护命令
+
+数据审计：
+
+```powershell
+$py = 'C:/Users/zhen/.workbuddy/binaries/python/envs/default/Scripts/python.exe'
+$audit = 'C:/Users/zhen/.codex/skills/douban-movie-collector/scripts/audit_movie_collection.py'
+& $py $audit --xlsx 'C:/Users/zhen/.codex/skills/douban-movie-collector/examples/2026-09-04_电影资源收藏表.xlsx' --check-links
+```
+
+审计会报告重复片名、缺少评分、缺少网盘/豆瓣链接、缺少集数/季数、格式错误链接和无法访问的链接。`--check-links` 会实际访问链接，网络波动时以报告为准，不要据此自动删除条目。
+
+同步到个人观影私有仓库：
+
+```powershell
+$py = 'C:/Users/zhen/.workbuddy/binaries/python/envs/default/Scripts/python.exe'
+$sync = 'C:/Users/zhen/.codex/skills/douban-movie-collector/scripts/sync_movie_collection.py'
+& $py $sync
+```
+
+同步命令只复制正式收藏表到 `spsz831/movie-collection`，提交前检查本地仓库是否干净；若有未提交修改会停止，不覆盖用户内容。skill 本身继续保存在 `spsz831/yz-skills`，与个人收藏表分开维护。
+
 ### 1. 解析与版本确认
 
 从消息中提取：名称、年份、网盘链接、提取码、用户提供的评分和版本描述。
@@ -50,6 +73,7 @@ description: 影视收藏管理工具。用户提供电影或电视剧名称、�
 - 未指定 `--sheet` 时，脚本按媒体类型自动选择工作表；一批数据不要混合电影和电视剧，混合批次应拆成两批。
 - 同名或信息冲突时，先列出候选版本，让用户确认；不要凭标题猜测。
 - 电视剧或迷你剧存在季数时填写 `季数`；只有总集数时只填写 `集数`。电影不填写集数和季数。
+- `status` 只允许 `想看`、`已看`、`弃看`、`重看`；未提供时默认 `想看`。
 
 ### 2. 信息核对
 

@@ -20,6 +20,8 @@ from datetime import datetime, date
 from pathlib import Path
 from openpyxl.utils import get_column_letter
 from openpyxl import load_workbook
+from openpyxl.styles import PatternFill
+from openpyxl.worksheet.datavalidation import DataValidation
 
 
 def norm(s):
@@ -34,6 +36,13 @@ OPTIONAL_COLUMNS = [
     "媒体类型", "集数", "季数", "豆瓣ID", "豆瓣链接", "评分核验日期",
 ]
 MEDIA_TYPES = {"电影", "电视剧", "迷你剧", "综艺", "纪录片"}
+WATCH_STATUSES = {"想看", "已看", "弃看", "重看"}
+STATUS_COLORS = {
+    "想看": "DDEBF7",
+    "已看": "E2F0D9",
+    "弃看": "E7E6E6",
+    "重看": "FCE4D6",
+}
 
 
 def ensure_columns(ws, header, enabled=True, include_series_columns=False):
@@ -80,6 +89,15 @@ def as_media_type(value):
     value = {"韩剧": "电视剧", "国剧": "电视剧", "美剧": "电视剧"}.get(str(value).strip(), str(value).strip())
     if value not in MEDIA_TYPES:
         raise ValueError(f"media_type 必须是：{'、'.join(sorted(MEDIA_TYPES))}")
+    return value
+
+
+def as_status(value):
+    if value in (None, ""):
+        return "想看"
+    value = str(value).strip()
+    if value not in WATCH_STATUSES:
+        raise ValueError(f"status 必须是：{'、'.join(WATCH_STATUSES)}")
     return value
 
 
@@ -180,6 +198,34 @@ def set_native_hyperlink(cell, value, label):
     cell.alignment = alignment
 
 
+def apply_status_style(cell, value):
+    """给观看状态添加轻量底色，不改变整行媒体类型底色。"""
+    status = str(value or "").strip()
+    if status in STATUS_COLORS:
+        cell.fill = PatternFill(fill_type="solid", fgColor=STATUS_COLORS[status])
+        font = copy.copy(cell.font)
+        font.bold = True
+        cell.font = font
+
+
+def ensure_status_controls(ws, c_stat):
+    if not c_stat:
+        return
+    col_letter = get_column_letter(c_stat)
+    formula = '"想看,已看,弃看,重看"'
+    exists = any(getattr(dv, "formula1", None) == formula for dv in ws.data_validations.dataValidation)
+    if not exists:
+        dv = DataValidation(type="list", formula1=formula, allow_blank=True)
+        dv.error = "请选择：想看、已看、弃看或重看"
+        dv.errorTitle = "观看状态无效"
+        dv.prompt = "请选择观看状态"
+        dv.promptTitle = "观看状态"
+        dv.add(f"{col_letter}2:{col_letter}{max(ws.max_row + 100, 100)}")
+        ws.add_data_validation(dv)
+    for r in range(2, ws.max_row + 1):
+        apply_status_style(ws.cell(row=r, column=c_stat), ws.cell(row=r, column=c_stat).value)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--xlsx", required=True)
@@ -200,6 +246,22 @@ def main():
     xlsx_path = Path(args.xlsx)
     wb = load_workbook(xlsx_path)
 
+    def _norm_header(s):
+        return re.sub(r"[\s/]+", "", str(s))
+
+    def sheet_has_match(sheet, movie):
+        headers = {_norm_header(cell.value): cell.column for cell in sheet[1] if cell.value not in (None, "")}
+        name_col = headers.get(_norm_header("电影名称"))
+        id_col = headers.get(_norm_header("豆瓣ID"))
+        target_name = norm(movie.get("name"))
+        target_id = str(movie.get("douban_id") or "").strip()
+        for row in range(2, sheet.max_row + 1):
+            if name_col and norm(sheet.cell(row, name_col).value) == target_name:
+                return True
+            if target_id and id_col and str(sheet.cell(row, id_col).value or "").strip() == target_id:
+                return True
+        return False
+
     # 定位工作表；一批数据必须属于同一媒体类别，避免误写到同一张表。
     if args.sheet:
         if args.sheet not in wb.sheetnames:
@@ -207,20 +269,31 @@ def main():
             return
         ws = wb[args.sheet]
     else:
-        target_sheets = {sheet_for_media_type(default_media_type(m)) for m in movies}
-        if len(target_sheets) > 1:
-            print(json.dumps({"ok": False, "error": "一批数据包含电影和电视剧，请分成两批写入"}, ensure_ascii=False))
-            return
-        target_sheet = target_sheets.pop()
-        if target_sheet not in wb.sheetnames:
-            print(json.dumps({"ok": False, "error": f"找不到工作表: {target_sheet}"}, ensure_ascii=False))
-            return
-        ws = wb[target_sheet]
+        implicit_update = args.update and all(not m.get("media_type") and not m.get("episodes") for m in movies)
+        if implicit_update:
+            matched_sheets = [
+                name for name in ("电影收藏", "电视剧收藏")
+                if name in wb.sheetnames and any(sheet_has_match(wb[name], movie) for movie in movies)
+            ]
+            if len(matched_sheets) > 1:
+                print(json.dumps({"ok": False, "error": "未指定媒体类型，但条目同时命中电影和电视剧工作表，请使用 --sheet"}, ensure_ascii=False))
+                return
+            if len(matched_sheets) == 1:
+                ws = wb[matched_sheets[0]]
+            else:
+                ws = wb["电影收藏"] if "电影收藏" in wb.sheetnames else wb[wb.sheetnames[0]]
+        else:
+            target_sheets = {sheet_for_media_type(default_media_type(m)) for m in movies}
+            if len(target_sheets) > 1:
+                print(json.dumps({"ok": False, "error": "一批数据包含电影和电视剧，请分成两批写入"}, ensure_ascii=False))
+                return
+            target_sheet = target_sheets.pop()
+            if target_sheet not in wb.sheetnames:
+                print(json.dumps({"ok": False, "error": f"找不到工作表: {target_sheet}"}, ensure_ascii=False))
+                return
+            ws = wb[target_sheet]
 
     # 表头 → 列号映射（第 1 行）；匹配时归一化：去空格和 "/"，兼容「国家/地区」「国家地区」等写法
-    def _norm_header(s):
-        return re.sub(r"[\s/]+", "", s)
-
     header = {}
     for c in range(1, ws.max_column + 1):
         v = ws.cell(row=1, column=c).value
@@ -261,6 +334,8 @@ def main():
     if c_name is None or c_link is None:
         print(json.dumps({"ok": False, "error": f"找不到关键列，现有表头: {list(header)}"}, ensure_ascii=False))
         return
+
+    ensure_status_controls(ws, c_stat)
 
     def put_link(row_no, cno, value, label):
         if cno and value not in (None, ""):
@@ -325,7 +400,9 @@ def main():
             update(c_genre, m.get("genre"))
             update(c_dir, m.get("director"))
             update(c_rate, as_rating(m.get("rating")))
-            update(c_stat, m.get("status"))
+            if c_stat and m.get("status") not in (None, ""):
+                update(c_stat, as_status(m.get("status")))
+                apply_status_style(ws.cell(row=matched_row, column=c_stat), ws.cell(row=matched_row, column=c_stat).value)
             if c_link and m.get("link") not in (None, ""):
                 set_native_hyperlink(ws.cell(row=matched_row, column=c_link), m.get("link"), "打开网盘")
             update(c_code, m.get("code"))
@@ -368,7 +445,10 @@ def main():
         put(c_dir, m.get("director"))
         rt = as_rating(m.get("rating"))
         put(c_rate, rt)
-        put(c_stat, m.get("status") or "想看")
+        status = as_status(m.get("status"))
+        put(c_stat, status)
+        if c_stat:
+            apply_status_style(ws.cell(row=row, column=c_stat), status)
         dt = as_date(m.get("date"))
         if c_date:
             cd = ws.cell(row=row, column=c_date)

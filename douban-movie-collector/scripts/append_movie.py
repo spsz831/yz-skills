@@ -11,6 +11,7 @@ JSON 数组元素字段（除 name 外均可选）：
   1. 按表头名定位列，序号自动顺延
   2. 按豆瓣 ID 或“片名+年份+媒体类型”定位条目，同名候选不唯一时跳过
   3. 样式从上一数据行整行复制，日期列写 date 并使用 yyyy-mm-dd 格式
+  4. 网盘链接和豆瓣链接写入 Excel 原生超链接，显示为可点击短标签
   4. 使用同目录临时文件原子替换；目标文件被占用时返回 LOCKED，不生成 _new.xlsx
 输出：JSON 摘要（写入行号 / 跳过的重复项 / 保存状态）
 """
@@ -35,12 +36,15 @@ OPTIONAL_COLUMNS = [
 MEDIA_TYPES = {"电影", "电视剧", "迷你剧", "综艺", "纪录片"}
 
 
-def ensure_columns(ws, header, enabled=True):
+def ensure_columns(ws, header, enabled=True, include_series_columns=False):
     """为旧模板追加可选字段；已有表头不重复创建。"""
     if not enabled:
         return header
     next_col = ws.max_column + 1
-    for name in OPTIONAL_COLUMNS:
+    columns = OPTIONAL_COLUMNS if include_series_columns else [
+        name for name in OPTIONAL_COLUMNS if name not in ("集数", "季数")
+    ]
+    for name in columns:
         key = re.sub(r"[\s/]+", "", name)
         if key in header:
             continue
@@ -156,6 +160,26 @@ def strip_source_tags(text):
     return s
 
 
+def set_native_hyperlink(cell, value, label):
+    """写入可点击的 Excel 原生超链接，同时保留当前单元格底色。"""
+    if value in (None, ""):
+        return
+    value = str(value).strip()
+    if not re.match(r"^https?://", value, re.I):
+        cell.value = value
+        return
+    cell.value = label
+    cell.hyperlink = value
+    font = copy.copy(cell.font)
+    font.color = "0563C1"
+    font.underline = "single"
+    cell.font = font
+    alignment = copy.copy(cell.alignment)
+    alignment.horizontal = "center"
+    alignment.vertical = "center"
+    cell.alignment = alignment
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--xlsx", required=True)
@@ -202,7 +226,12 @@ def main():
         v = ws.cell(row=1, column=c).value
         if v is not None and str(v).strip():
             header[_norm_header(v)] = c
-    header = ensure_columns(ws, header, enabled=not args.no_schema)
+    header = ensure_columns(
+        ws,
+        header,
+        enabled=not args.no_schema,
+        include_series_columns=ws.title == "电视剧收藏",
+    )
 
     def col(*names):
         """按候选名找列号（归一化后匹配）"""
@@ -232,6 +261,10 @@ def main():
     if c_name is None or c_link is None:
         print(json.dumps({"ok": False, "error": f"找不到关键列，现有表头: {list(header)}"}, ensure_ascii=False))
         return
+
+    def put_link(row_no, cno, value, label):
+        if cno and value not in (None, ""):
+            set_native_hyperlink(ws.cell(row=row_no, column=cno), value, label)
 
     # 找最后有内容的数据行，并建立安全查重索引
     last_row, last_serial, existing = 1, 0, {}
@@ -293,13 +326,15 @@ def main():
             update(c_dir, m.get("director"))
             update(c_rate, as_rating(m.get("rating")))
             update(c_stat, m.get("status"))
-            update(c_link, m.get("link"))
+            if c_link and m.get("link") not in (None, ""):
+                set_native_hyperlink(ws.cell(row=matched_row, column=c_link), m.get("link"), "打开网盘")
             update(c_code, m.get("code"))
             update(c_media, media_type)
             update(c_episodes, as_positive_int(m.get("episodes"), "episodes"))
             update(c_seasons, as_positive_int(m.get("seasons"), "seasons"))
             update(c_douban_id, douban_id)
-            update(c_douban_url, m.get("douban_url"))
+            if c_douban_url and m.get("douban_url") not in (None, ""):
+                set_native_hyperlink(ws.cell(row=matched_row, column=c_douban_url), m.get("douban_url"), "打开豆瓣")
             update(c_remark, strip_source_tags(m.get("remark")))
             if c_rating_date and m.get("rating") not in (None, ""):
                 ws.cell(row=matched_row, column=c_rating_date).value = as_date(m.get("rating_date"), "rating_date")
@@ -339,14 +374,14 @@ def main():
             cd = ws.cell(row=row, column=c_date)
             cd.value = dt
             cd.number_format = "yyyy-mm-dd"
-        put(c_link, m.get("link"))
+        put_link(row, c_link, m.get("link"), "打开网盘")
         put(c_code, m.get("code"))
         normalized_media_type = media_type or default_media_type(m)
         put(c_media, normalized_media_type)
         put(c_episodes, as_positive_int(m.get("episodes"), "episodes"))
         put(c_seasons, as_positive_int(m.get("seasons"), "seasons"))
         put(c_douban_id, douban_id or None)
-        put(c_douban_url, m.get("douban_url"))
+        put_link(row, c_douban_url, m.get("douban_url"), "打开豆瓣")
         if c_rating_date and rt is not None:
             ws.cell(row=row, column=c_rating_date).value = as_date(m.get("rating_date"), "rating_date")
             ws.cell(row=row, column=c_rating_date).number_format = "yyyy-mm-dd"

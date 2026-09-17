@@ -1,0 +1,6 @@
+interface:
+  display_name: "不无聊"
+  short_description: "定位文案流失点，按平台做最小修改"
+  default_prompt: "使用 $anti-boring 先找出这段文字第一个让人想划走的位置，再按指定平台做最小修改。"
+policy:
+  allow_implicit_invocation: true

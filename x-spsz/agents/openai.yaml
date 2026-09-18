@@ -1,4 +1,4 @@
 interface:
-  display_name: "HomeServer X 账号助手"
-  short_description: "长期规划 HomeServer 垂类内容、推文与配图"
-  default_prompt: "使用 $x-spsz，围绕 HomeServer 垂类账号判断这个主题适合哪个栏目，给出首选选题、普通账号可直接发布的推文和合适的配图方案。"
+  display_name: "HomeServer 双平台账号助手"
+  short_description: "规划 HomeServer 内容、X 与 Threads 文案和配图"
+  default_prompt: "使用 $x-spsz，围绕 HomeServer 垂类账号判断栏目，分别生成适合未开会员 X 和 Threads 的文案，并给出共用配图方案。"

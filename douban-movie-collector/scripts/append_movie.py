@@ -4,7 +4,7 @@ append_movie.py — 向影视收藏表 xlsx 追加或更新影视条目
 用法：
   python append_movie.py --xlsx <表格路径> --json '<JSON数组>' [--update] [--force]
 JSON 数组元素字段（除 name 外均可选）：
-  name 必填；link 网盘链接；code 提取码；country 国家地区；year 年份；
+  name 必填；link 网盘链接；link2 第二个网盘链接；code 提取码；country 国家地区；year 年份；
   genre 类型；director 导演；rating 豆瓣评分；status 观看状态(默认"想看")；
   date 收藏日期(默认今天)；remark 备注
 行为：
@@ -42,6 +42,13 @@ STATUS_COLORS = {
     "已看": "E2F0D9",
     "弃看": "E7E6E6",
     "重看": "FCE4D6",
+}
+MEDIA_ROW_COLORS = {
+    "电影": "EAF3FF",
+    "电视剧": "E8F4FB",
+    "迷你剧": "F1ECFA",
+    "综艺": "FFF3E0",
+    "纪录片": "FFF9E6",
 }
 
 
@@ -208,6 +215,16 @@ def apply_status_style(cell, value):
         cell.font = font
 
 
+def apply_media_row_style(ws, row_no, media_type):
+    """按媒体类型重设整行底色，避免复制上一行导致颜色串行。"""
+    color = MEDIA_ROW_COLORS.get(str(media_type or "").strip())
+    if not color:
+        return
+    fill = PatternFill(fill_type="solid", fgColor=color)
+    for cell in ws[row_no]:
+        cell.fill = copy.copy(fill)
+
+
 def ensure_status_controls(ws, c_stat):
     if not c_stat:
         return
@@ -316,6 +333,7 @@ def main():
     c_idx  = col("序号")
     c_name = col("电影名称", "片名")
     c_link = col("网盘链接", "链接")
+    c_link2 = col("网盘链接2")
     c_code = col("提取码")
     c_country = col("国家地区", "国家")
     c_year = col("年份")
@@ -336,6 +354,13 @@ def main():
         return
 
     ensure_status_controls(ws, c_stat)
+
+    # 修复历史数据中的串色，并为后续新增记录建立唯一的媒体类型配色规则。
+    if c_media:
+        for r in range(2, ws.max_row + 1):
+            apply_media_row_style(ws, r, ws.cell(row=r, column=c_media).value)
+            if c_stat:
+                apply_status_style(ws.cell(row=r, column=c_stat), ws.cell(row=r, column=c_stat).value)
 
     def put_link(row_no, cno, value, label):
         if cno and value not in (None, ""):
@@ -405,6 +430,8 @@ def main():
                 apply_status_style(ws.cell(row=matched_row, column=c_stat), ws.cell(row=matched_row, column=c_stat).value)
             if c_link and m.get("link") not in (None, ""):
                 set_native_hyperlink(ws.cell(row=matched_row, column=c_link), m.get("link"), "打开网盘")
+            if c_link2 and m.get("link2") not in (None, ""):
+                set_native_hyperlink(ws.cell(row=matched_row, column=c_link2), m.get("link2"), "打开网盘2")
             update(c_code, m.get("code"))
             update(c_media, media_type)
             update(c_episodes, as_positive_int(m.get("episodes"), "episodes"))
@@ -419,6 +446,10 @@ def main():
             if c_date and m.get("date") not in (None, ""):
                 ws.cell(row=matched_row, column=c_date).value = as_date(m["date"])
                 ws.cell(row=matched_row, column=c_date).number_format = "yyyy-mm-dd"
+            if c_media:
+                apply_media_row_style(ws, matched_row, ws.cell(row=matched_row, column=c_media).value)
+                if c_stat:
+                    apply_status_style(ws.cell(row=matched_row, column=c_stat), ws.cell(row=matched_row, column=c_stat).value)
             written.append({"row": matched_row, "name": name, "action": "updated"})
             continue
         if matched_row and not args.force:
@@ -455,6 +486,7 @@ def main():
             cd.value = dt
             cd.number_format = "yyyy-mm-dd"
         put_link(row, c_link, m.get("link"), "打开网盘")
+        put_link(row, c_link2, m.get("link2"), "打开网盘2")
         put(c_code, m.get("code"))
         normalized_media_type = media_type or default_media_type(m)
         put(c_media, normalized_media_type)
@@ -468,6 +500,10 @@ def main():
         # 备注清洗：只保留剧情简介，剥离片源/画质/字幕描述
         raw_remark = m.get("remark")
         put(c_remark, strip_source_tags(raw_remark))
+        if c_media:
+            apply_media_row_style(ws, row, normalized_media_type)
+            if c_stat:
+                apply_status_style(ws.cell(row=row, column=c_stat), status)
 
         written.append({"row": row, "name": name, "serial": last_serial + 1})
         existing.setdefault(key, []).append(row)
@@ -488,6 +524,8 @@ def main():
         os.close(fd)
         temp_path = Path(temp_name)
         wb.save(temp_path)
+        # Windows may keep the source workbook locked until the workbook object is closed.
+        wb.close()
         os.replace(temp_path, xlsx_path)
         check_wb = load_workbook(xlsx_path, read_only=True, data_only=False)
         check_ws = check_wb[ws.title]

@@ -249,6 +249,20 @@ $placements = New-PlacementPlan `
 
 Assert-Equal $placements.Count 5 'Should cap placements at the default max of five'
 
+$autoProfile = Resolve-VisualProfile -Markdown (Read-TestUtf8File -Path $latestArticlePath) -RequestedProfile 'auto'
+Assert-Equal $autoProfile.Name 'trend-opinion' 'Should use trend-opinion as the neutral auto profile'
+Assert-Equal $autoProfile.Source 'auto' 'Should mark inferred profiles as auto'
+
+$modelProfile = Resolve-VisualProfile -Markdown '# Model 发布并上线' -RequestedProfile 'auto'
+Assert-Equal $modelProfile.Name 'model-release' 'Should infer model-release from release language'
+
+$technicalProfile = Resolve-VisualProfile -Markdown '# 用模型做 PDF 文档解析和 RAG 数据准备' -RequestedProfile 'auto'
+Assert-Equal $technicalProfile.Name 'technical-explainer' 'Should not classify technical articles as model releases without a release signal'
+
+$profiledPlacements = New-PlacementPlan -ArticlePath $latestArticlePath -Markdown (Read-TestUtf8File -Path $latestArticlePath) -VisualProfile 'hands-on' -MaxPlacements 2
+Assert-Equal $profiledPlacements[0].NarrativeRole 'starting task' 'Should assign profile-specific narrative roles'
+Assert-Equal $profiledPlacements[1].NarrativeRole 'setup' 'Should assign sequential profile-specific narrative roles'
+
 for ($i = 0; $i -lt $placements.Count; $i++) {
     $placement = $placements[$i]
     Assert-Equal $placement.slot ($i + 1) 'Should assign sequential slot numbers'
@@ -274,11 +288,11 @@ Assert-True ($longHeadingStem.StartsWith('01-')) 'Should preserve the slot prefi
 Assert-True ($longHeadingStem.Length -le 48) 'Should cap long stems to a safe deterministic length'
 Assert-Equal $longHeadingPlacement[0].image ($longHeadingStem + '.png') 'Should keep image name aligned with the capped stem'
 
-Assert-Equal $placements[0].image '01-market-reset.png' 'Should generate deterministic image names from headings'
-Assert-Equal $placements[1].image '02-stack-pressure.png' 'Should generate deterministic image names for level-3 headings'
-Assert-Equal $placements[2].image '03-shipping-reality.png' 'Should keep image names stable across reruns'
-Assert-Equal $placements[3].image '04-u4e2d-u6587-u89c2-u5bdf.png' 'Should create ASCII-safe image names for UTF-8 headings'
-Assert-Equal $placements[4].image '05-closing-signal.png' 'Should include slot prefixes in image names'
+Assert-True ($placements[0].image -match '^01-market-reset-[a-f0-9]{8}\.png$') 'Should generate stable hash-suffixed image names from headings'
+Assert-True ($placements[1].image -match '^02-stack-pressure-[a-f0-9]{8}\.png$') 'Should generate stable hash-suffixed image names for level-3 headings'
+Assert-True ($placements[2].image -match '^03-shipping-reality-[a-f0-9]{8}\.png$') 'Should keep stable image-name structure across sections'
+Assert-True ($placements[3].image -match '^04-[a-z0-9-]+-[a-f0-9]{8}\.png$') 'Should create ASCII-safe hash-suffixed image names for UTF-8 headings'
+Assert-True ($placements[4].image -match '^05-closing-signal-[a-f0-9]{8}\.png$') 'Should include slot prefixes and stable hashes in image names'
 
 $placementsAgain = New-PlacementPlan `
     -ArticlePath $latestArticlePath `
@@ -296,19 +310,15 @@ $promptsDir = Join-Path $expectedDir 'prompts'
 $placementJsonPath = Join-Path $expectedDir 'placement.json'
 $outlinePath = Join-Path $expectedDir 'outline.md'
 $batchPath = Join-Path $expectedDir 'batch.json'
-$expectedPromptFiles = @(
-    '01-market-reset.md',
-    '02-stack-pressure.md',
-    '03-shipping-reality.md',
-    '04-u4e2d-u6587-u89c2-u5bdf.md',
-    '05-closing-signal.md'
-)
+$visualBriefPath = Join-Path $expectedDir 'visual-brief.json'
+$expectedPromptFiles = @($placements | ForEach-Object { [System.IO.Path]::GetFileName($_.PromptFile) })
 
 Assert-True (Test-Path -LiteralPath $expectedDir) 'Should materialize the article-scoped illustration directory'
 Assert-True (Test-Path -LiteralPath $promptsDir) 'Should create prompts directory'
 Assert-True (Test-Path -LiteralPath $placementJsonPath) 'Should write placement.json'
 Assert-True (Test-Path -LiteralPath $outlinePath) 'Should write outline.md'
 Assert-True (Test-Path -LiteralPath $batchPath) 'Should write batch.json'
+Assert-True (Test-Path -LiteralPath $visualBriefPath) 'Should write visual-brief.json'
 
 foreach ($promptFile in $expectedPromptFiles) {
     Assert-True (Test-Path -LiteralPath (Join-Path $promptsDir $promptFile)) "Should write prompt file $promptFile"
@@ -318,29 +328,37 @@ $materializedPlacements = @((ConvertFrom-Json -InputObject (Read-TestUtf8File -P
 Assert-Equal $materializedPlacements.Count 5 'placement.json should contain five placements'
 Assert-Equal $materializedPlacements[0].slot 1 'placement.json should preserve slot'
 Assert-Equal $materializedPlacements[0].after_heading '## Market reset' 'placement.json should preserve target heading'
-Assert-Equal $materializedPlacements[0].image '01-market-reset.png' 'placement.json should preserve deterministic image names'
-Assert-Equal $materializedPlacements[3].image '04-u4e2d-u6587-u89c2-u5bdf.png' 'placement.json should preserve ASCII-safe UTF-8-derived image names'
+Assert-Equal $materializedPlacements[0].image $placements[0].image 'placement.json should preserve deterministic image names'
+Assert-Equal $materializedPlacements[3].image $placements[3].image 'placement.json should preserve ASCII-safe UTF-8-derived image names'
 
 $batch = ConvertFrom-Json -InputObject (Read-TestUtf8File -Path $batchPath)
 Assert-Equal $batch.jobs 2 'batch.json should set jobs for batch image generation'
 Assert-Equal $batch.tasks.Count 5 'batch.json should include one task per placement'
-Assert-Equal $batch.tasks[0].id '01-market-reset' 'batch.json should derive task id from prompt stem'
-Assert-Equal $batch.tasks[0].promptFiles[0] 'prompts/01-market-reset.md' 'batch.json should use relative prompt paths'
-Assert-Equal $batch.tasks[0].image '01-market-reset.png' 'batch.json should target the deterministic image file name'
+Assert-Equal $batch.tasks[0].id $placements[0].TaskId 'batch.json should derive task id from prompt stem'
+Assert-Equal $batch.tasks[0].promptFiles[0] $placements[0].PromptFile 'batch.json should use relative prompt paths'
+Assert-Equal $batch.tasks[0].image $placements[0].image 'batch.json should target the deterministic image file name'
 Assert-Equal $batch.tasks[0].provider 'google' 'batch.json should set provider'
 Assert-Equal $batch.tasks[0].model 'gemini-3-pro-image-preview' 'batch.json should set model'
 Assert-Equal $batch.tasks[0].ar '16:9' 'batch.json should set aspect ratio'
 Assert-Equal $batch.tasks[0].quality '2k' 'batch.json should set quality'
+
+$visualBrief = ConvertFrom-Json -InputObject (Read-TestUtf8File -Path $visualBriefPath)
+Assert-Equal $visualBrief.profile 'trend-opinion' 'visual-brief should persist the auto-selected profile'
+Assert-Equal $visualBrief.profile_source 'auto' 'visual-brief should record the profile source'
+Assert-Equal $visualBrief.roles[0].narrative_role 'human context' 'visual-brief should persist narrative roles'
 
 $outline = Read-TestUtf8File -Path $outlinePath
 Assert-True ($outline.Contains($latestArticleId)) 'outline.md should mention the article id'
 Assert-True ($outline.Contains('## Market reset')) 'outline.md should summarize placement headings'
 Assert-True ($outline.Contains($strings.ChineseHeading)) 'outline.md should preserve UTF-8 heading text'
 
-$utf8PromptPath = Join-Path $promptsDir '04-u4e2d-u6587-u89c2-u5bdf.md'
+$utf8PromptPath = Join-Path $promptsDir ([System.IO.Path]::GetFileName($placements[3].PromptFile))
 $utf8Prompt = Read-TestUtf8File -Path $utf8PromptPath
 Assert-True ($utf8Prompt.Contains($strings.ChineseHeading)) 'Prompt files should preserve UTF-8 heading text'
 Assert-True ($utf8Prompt.Contains($latestArticleId)) 'Prompt files should mention the article id'
+Assert-True ($utf8Prompt.Contains('ARTICLE PROFILE:')) 'Prompt files should include profile-specific requirements'
+Assert-True ($utf8Prompt.Contains('Visual profile: trend-opinion')) 'Prompt files should record the selected profile'
+Assert-True (-not $utf8Prompt.Contains('System.Object[]')) 'Prompt files should expand profile rules instead of serializing an array type'
 
 Remove-Item -LiteralPath $tempRoot -Recurse -Force
 

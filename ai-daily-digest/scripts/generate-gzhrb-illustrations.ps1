@@ -167,12 +167,42 @@ function Get-ResolvedBunTool {
     return Resolve-BunTool -CommandInfo $bunCommand
 }
 
+function Get-GenerationInvocationForPowerShellScript {
+    param(
+        [Parameter(Mandatory)][string]$BatchPath,
+        [Parameter(Mandatory)][string]$IllustrationGeneratorScriptPath
+    )
+
+    return [pscustomobject]@{
+        CommandPath      = (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe')
+        Arguments        = @(
+            '-NoProfile',
+            '-ExecutionPolicy',
+            'Bypass',
+            '-File',
+            $IllustrationGeneratorScriptPath,
+            '--batchfile',
+            $BatchPath,
+            '--jobs',
+            '2',
+            '--json'
+        )
+        WorkingDirectory = Split-Path -Parent $BatchPath
+    }
+}
+
 function New-GzhrbIllustrationCommand {
     param(
         [Parameter(Mandatory)][string]$BatchPath,
         [Parameter(Mandatory)][string]$IllustrationGeneratorScriptPath,
         [Parameter(Mandatory)]$BunTool
     )
+
+    if ([System.IO.Path]::GetExtension($IllustrationGeneratorScriptPath).ToLowerInvariant() -eq '.ps1') {
+        return Get-GenerationInvocationForPowerShellScript `
+            -BatchPath $BatchPath `
+            -IllustrationGeneratorScriptPath $IllustrationGeneratorScriptPath
+    }
 
     $workingDirectory = Split-Path -Parent $BatchPath
     $arguments = @()

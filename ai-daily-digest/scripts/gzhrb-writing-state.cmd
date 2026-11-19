@@ -55,6 +55,11 @@ if /I "%ACTION%"=="help" goto usage_success
 if /I "%ACTION%"=="inspect" set "TARGET_CMD=%SCRIPT_DIR%inspect-gzhrb-writing-state.cmd"
 if /I "%ACTION%"=="inspect-json" set "TARGET_PS1=%SCRIPT_DIR%inspect-gzhrb-writing-state.ps1"
 if /I "%ACTION%"=="auto-sync" set "TARGET_PS1=%SCRIPT_DIR%gzhrb-writing-state.ps1"
+if /I "%ACTION%"=="mark-wechat-draft" set "TARGET_PS1=%SCRIPT_DIR%gzhrb-writing-state.ps1"
+if /I "%ACTION%"=="mark-wechat-refine" set "TARGET_PS1=%SCRIPT_DIR%gzhrb-writing-state.ps1"
+if /I "%ACTION%"=="mark-humanizer" set "TARGET_PS1=%SCRIPT_DIR%gzhrb-writing-state.ps1"
+if /I "%ACTION%"=="approve-wechat-draft" set "TARGET_PS1=%SCRIPT_DIR%gzhrb-writing-state.ps1"
+if /I "%ACTION%"=="approve-writing" set "TARGET_PS1=%SCRIPT_DIR%gzhrb-writing-state.ps1"
 if /I "%ACTION%"=="status-summary" set "TARGET_PS1=%SCRIPT_DIR%gzhrb-writing-state.ps1"
 if /I "%ACTION%"=="status-summary-json" set "TARGET_PS1=%SCRIPT_DIR%gzhrb-writing-state.ps1"
 if /I "%ACTION%"=="mark-khazix" set "TARGET_CMD=%SCRIPT_DIR%mark-gzhrb-khazix-complete.cmd"
@@ -102,6 +107,16 @@ if not "%TARGET_PS1%"=="" (
     "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -Command ". '%TARGET_PS1%' -ArticlePath '%ARTICLE_PATH%'; Get-GzhrbWritingStateValidation -ArticlePath '%ARTICLE_PATH%' | ConvertTo-Json -Depth 8"
   ) else if /I "%ACTION%"=="auto-sync" (
     "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -Command ". '%TARGET_PS1%' -ArticlePath '__bootstrap__'; Invoke-GzhrbWritingStateAutoSync -ArticlePath '%ARTICLE_PATH%' -UpdatedBy 'auto-sync' | ConvertTo-Json -Depth 8"
+  ) else if /I "%ACTION%"=="mark-wechat-draft" (
+    "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%TARGET_PS1%" -ArticlePath "%ARTICLE_PATH%" -Action mark-wechat-draft
+  ) else if /I "%ACTION%"=="mark-wechat-refine" (
+    "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%TARGET_PS1%" -ArticlePath "%ARTICLE_PATH%" -Action mark-wechat-refine
+  ) else if /I "%ACTION%"=="mark-humanizer" (
+    "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%TARGET_PS1%" -ArticlePath "%ARTICLE_PATH%" -Action mark-humanizer
+  ) else if /I "%ACTION%"=="approve-wechat-draft" (
+    "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%TARGET_PS1%" -ArticlePath "%ARTICLE_PATH%" -Action approve-wechat-draft
+  ) else if /I "%ACTION%"=="approve-writing" (
+    "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%TARGET_PS1%" -ArticlePath "%ARTICLE_PATH%" -Action approve-writing
   ) else if /I "%ACTION%"=="status-summary" (
     "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -Command ". '%TARGET_PS1%'; Get-GzhrbWritingStateStatusSummary -Limit %LIMIT%"
   ) else if /I "%ACTION%"=="status-summary-json" (

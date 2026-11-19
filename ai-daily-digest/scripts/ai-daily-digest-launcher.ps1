@@ -16,6 +16,36 @@ $outputDir = Join-Path $projectDir 'reports\output'
 $healthDir = Join-Path $projectDir 'reports\health'
 $topicDir = Join-Path $projectDir 'reports\gzhrb\topics'
 
+function Import-EnvFile {
+    param([string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    foreach ($line in Get-Content -LiteralPath $Path) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        if ($line.TrimStart().StartsWith('#')) { continue }
+
+        $parts = $line -split '=', 2
+        if ($parts.Count -ne 2) { continue }
+
+        $name = $parts[0].Trim()
+        $value = $parts[1].Trim().Trim('"').Trim("'")
+        if ([string]::IsNullOrWhiteSpace($name)) { continue }
+
+        $existing = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if ([string]::IsNullOrWhiteSpace($existing)) {
+            [Environment]::SetEnvironmentVariable($name, $value, 'Process')
+        }
+    }
+}
+
+function Initialize-Env {
+    Import-EnvFile -Path (Join-Path $projectDir '.env')
+    Import-EnvFile -Path (Join-Path $projectDir '.env.local')
+}
+
 function Read-Choice {
     param(
         [string]$Prompt,
@@ -54,6 +84,22 @@ function Resolve-OpenAIWireApi {
     }
 
     return 'chat'
+}
+
+function Get-CompatibleApiValue {
+    param(
+        [string]$PrimaryValue,
+        [string]$SecondaryValue,
+        [string]$DefaultValue = ''
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($PrimaryValue)) {
+        return $PrimaryValue
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SecondaryValue)) {
+        return $SecondaryValue
+    }
+    return $DefaultValue
 }
 
 function Read-TopicChoice {
@@ -152,6 +198,8 @@ if (-not (Test-Path -LiteralPath $digestTs)) {
     throw "未找到项目脚本 / Project script not found: $digestTs"
 }
 
+Initialize-Env
+
 New-Item -ItemType Directory -Force -Path $outputDir, $healthDir | Out-Null
 
 Write-Host ""
@@ -222,8 +270,10 @@ $openaiModelOverride = switch ($openaiChoice) {
     '4' { Read-Host "请输入自定义 OpenAI 模型名 / Enter custom OpenAI model name" }
     default { 'gpt-5.4' }
 }
-$openaiLabel = if ([string]::IsNullOrWhiteSpace($openaiModelOverride)) { '(env OPENAI_MODEL)' } else { $openaiModelOverride }
-$openaiWireApi = Resolve-OpenAIWireApi -WireApi $env:OPENAI_WIRE_API -ApiBase $env:OPENAI_API_BASE
+$compatibleApiBase = Get-CompatibleApiValue -PrimaryValue $env:OPENAI_API_BASE -SecondaryValue $env:ANTHROPIC_BASE_URL
+$compatibleModel = Get-CompatibleApiValue -PrimaryValue $env:OPENAI_MODEL -SecondaryValue $env:ANTHROPIC_MODEL
+$openaiLabel = if ([string]::IsNullOrWhiteSpace($openaiModelOverride)) { "(env model: $compatibleModel)" } else { $openaiModelOverride }
+$openaiWireApi = Resolve-OpenAIWireApi -WireApi $env:OPENAI_WIRE_API -ApiBase $compatibleApiBase
 $gzhrbMode = if ([string]::IsNullOrWhiteSpace($env:GZHRB_MODE)) { 'ai-observation' } else { $env:GZHRB_MODE }
 $gzhrbModeLabel = switch ($gzhrbMode) {
     'tool-guide' { 'tool-guide（工具讲解 / 配置说明型）' }
@@ -251,8 +301,8 @@ if ($confirm -in @('N','n')) {
     exit 0
 }
 
-if (-not $env:GEMINI_API_KEY -and -not $env:OPENAI_API_KEY) {
-    throw "缺少 API Key，请先设置 GEMINI_API_KEY 和/或 OPENAI_API_KEY 到用户环境变量。"
+if (-not $env:GEMINI_API_KEY -and -not $env:OPENAI_API_KEY -and -not $env:ANTHROPIC_AUTH_TOKEN) {
+    throw "缺少 API Key，请先设置 GEMINI_API_KEY、OPENAI_API_KEY 和/或 ANTHROPIC_AUTH_TOKEN 到用户环境变量。"
 }
 
 $ts = Get-Date -Format 'yyyyMMdd-HHmm'
@@ -325,7 +375,7 @@ if ($GenerateGzhrb) {
 
     Write-Host ""
     Write-Host "[STOP] 正式流程现在停在写作关口。"
-    Write-Host "[STOP] Next: 先用 khazix-writer 产出初稿，再用 wechat-article-writer 产出优化稿。"
+    Write-Host "[STOP] Next: 先用 wechat-article-writer 产出初稿并二次优化，再用 humanizer-zh 去除 AI 味后定稿。"
     Write-Host "[STOP] 优化稿落盘后，再运行插图和发布后半程。"
 }
 

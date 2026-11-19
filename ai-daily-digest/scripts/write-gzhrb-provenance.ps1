@@ -44,7 +44,11 @@ function Get-ProvenanceFileName {
 
     switch ($SkillName) {
         'khazix-writer' { return 'khazix-execution.json' }
-        'wechat-article-writer' { return 'wechat-execution.json' }
+        'wechat-article-writer' {
+            if ($InputPath -match 'wechat-draft|drafts') { return 'wechat-draft-execution.json' }
+            return 'wechat-refine-execution.json'
+        }
+        'humanizer-zh' { return 'humanizer-execution.json' }
         'baoyu-article-illustrator' { return 'illustration-execution.json' }
         default { throw "Unsupported skill name for provenance: $SkillName" }
     }

@@ -14,6 +14,12 @@ interface PublishPackage {
   topic_tags: string[];
 }
 
+interface PartialPublishPackage {
+  titles?: string[];
+  intro_lines?: string[];
+  topic_tags?: string[];
+}
+
 interface WorkitemRecord {
   article_id?: string;
   paths?: {
@@ -195,6 +201,16 @@ function uniqueTrimmed(items: unknown[], maxCount: number): string[] {
   return results;
 }
 
+function parseNumberedMarkdownList(sectionBody: string, maxCount: number): string[] {
+  const normalized = normalizeLineEndings(sectionBody);
+  const items = normalized
+    .split('\n')
+    .map((line) => line.match(/^\s*\d+\.\s+(.+?)\s*$/)?.[1] ?? '')
+    .filter(Boolean);
+
+  return uniqueTrimmed(items, maxCount);
+}
+
 function parsePublishPackage(raw: string): PublishPackage {
   const parsed = JSON.parse(extractJsonBlock(raw)) as Partial<PublishPackage>;
 
@@ -214,7 +230,7 @@ function parsePublishPackage(raw: string): PublishPackage {
 
   return {
     titles,
-    intro_lines: introLines.map((line) => line.slice(0, 20).trim()),
+    intro_lines: introLines,
     topic_tags: topicTags,
   };
 }
@@ -235,8 +251,8 @@ function buildPackagingPrompt(articleBody: string): string {
 1. titles 提供 3 到 5 个。
 2. 标题风格要像个人公众号，不要像技术文档标题，不要像论文题目。
 3. 标题要更像近期热点单篇文章标题，而不是资料索引标题。
-4. intro_lines 提供 3 到 5 个，每条不超过 20 个汉字。
-5. intro_lines 要适合公众号发文时作为引导语，不要写成长句。
+4. intro_lines 提供 3 到 5 个，每条都要是完整可直接发的引导语。
+5. intro_lines 适合公众号发文时配正文使用，可以是 1 到 3 句，不要硬写成很短的残句。
 6. topic_tags 提供 5 到 10 个，适合公众号语境，保持短词组。
 7. 不要带 # 符号，不要带编号，不要带 emoji。
 8. 不能编造正文没有的信息。
@@ -248,6 +264,22 @@ ${articleBody}`;
 
 function normalizeArticleImagePaths(articleContent: string): string {
   let normalized = articleContent;
+  // Publish units must be portable: source articles commonly reference the sibling
+  // reports/gzhrb/illustrations directory via ../../, while packaged copies live locally.
+  // Also handle article exports that keep an absolute or nested article-directory
+  // prefix before `illustrations/<article-scope>/<file>`.
+  normalized = normalized.replace(
+    /\((?:[^()\r\n]*[\\/])?illustrations[\\/]([^/\\]+)[\\/]([^\s)]+)\)/g,
+    '(illustrations/$2)',
+  );
+  normalized = normalized.replace(
+    /\((?:\.\.\/)+illustrations\/[^/)]+\/([^\s)]+)\)/g,
+    '(illustrations/$1)',
+  );
+  normalized = normalized.replace(
+    /\((?:\.\.\\)+illustrations\\[^\\)]+\\([^\s)]+)\)/g,
+    '(illustrations/$1)',
+  );
   normalized = normalized.replace(
     /\(illustrations\/[^/)]+\/([^)\s]+)\)/g,
     '(illustrations/$1)',
@@ -263,6 +295,46 @@ async function readWorkitem(workitemPath: string): Promise<WorkitemRecord | null
   try {
     const raw = await readFile(workitemPath, 'utf8');
     return JSON.parse(raw) as WorkitemRecord;
+  } catch {
+    return null;
+  }
+}
+
+async function readFinalReviewPackage(articlePath: string): Promise<PartialPublishPackage | null> {
+  const reviewPath = join(dirname(articlePath), 'final-review-notes.md');
+
+  try {
+    const raw = await readFile(reviewPath, 'utf8');
+    const normalized = normalizeLineEndings(raw);
+
+    const titleMatch =
+      normalized.match(/##\s*(?:最终标题备选|标题备选)\s*\n([\s\S]*?)(?=\n##\s+|$)/) ?? null;
+    const introMatch =
+      normalized.match(/##\s*(?:导语备选|引导语备选)\s*\n([\s\S]*?)(?=\n##\s+|$)/) ?? null;
+    const tagMatch =
+      normalized.match(/##\s*(?:话题标签|标签备选)\s*\n([\s\S]*?)(?=\n##\s+|$)/) ?? null;
+
+    const titles = titleMatch ? parseNumberedMarkdownList(titleMatch[1], 5) : [];
+    const introLines = introMatch ? parseNumberedMarkdownList(introMatch[1], 5) : [];
+    const topicTags = tagMatch
+      ? uniqueTrimmed(
+          tagMatch[1]
+            .split(/[\n·,，]/)
+            .map((item) => item.trim())
+            .filter(Boolean),
+          10,
+        )
+      : [];
+
+    if (titles.length === 0 && introLines.length === 0 && topicTags.length === 0) {
+      return null;
+    }
+
+    return {
+      titles: titles.length > 0 ? titles : undefined,
+      intro_lines: introLines.length > 0 ? introLines : undefined,
+      topic_tags: topicTags.length > 0 ? topicTags : undefined,
+    };
   } catch {
     return null;
   }
@@ -390,6 +462,8 @@ async function main() {
     throw new Error(`Article body is empty: ${articlePath}`);
   }
 
+  const manualPkg = await readFinalReviewPackage(articlePath);
+
   const { openaiApiKey, openaiApiBase, openaiModel, openaiWireApi } = loadAiEnv();
   const response = await callOpenAICompatible(buildPackagingPrompt(articleBody), {
     apiKey: openaiApiKey,
@@ -397,7 +471,21 @@ async function main() {
     model: openaiModel || 'gpt-5.4',
     wireApi: openaiWireApi,
   });
-  const pkg = parsePublishPackage(response);
+  const generatedPkg = parsePublishPackage(response);
+  const pkg: PublishPackage = {
+    titles:
+      manualPkg?.titles && manualPkg.titles.length >= 3
+        ? manualPkg.titles
+        : generatedPkg.titles,
+    intro_lines:
+      manualPkg?.intro_lines && manualPkg.intro_lines.length >= 2
+        ? manualPkg.intro_lines
+        : generatedPkg.intro_lines,
+    topic_tags:
+      manualPkg?.topic_tags && manualPkg.topic_tags.length >= 5
+        ? manualPkg.topic_tags
+        : generatedPkg.topic_tags,
+  };
 
   const publishIllustrationsDir = join(publishUnitDir, 'illustrations');
   await mkdir(publishIllustrationsDir, { recursive: true });

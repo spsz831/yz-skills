@@ -214,7 +214,7 @@ New-TestFile -Path $workitemPath -Content $approvalWorkitem
 $approveTopic = & cmd /c "`"$scriptPath`" --no-pause approve-topic --article `"$articlePath`"" 2>&1
 Assert-Equal $LASTEXITCODE 0 'approve-topic action should succeed'
 $workitem = Get-Content -Raw -LiteralPath $workitemPath | ConvertFrom-Json
-Assert-Equal $workitem.stage 'awaiting_khazix_execution' 'approve-topic should move stage to awaiting_khazix_execution'
+Assert-Equal $workitem.stage 'awaiting_wechat_draft_execution' 'approve-topic should move stage to the current wechat draft stage'
 Assert-True (Test-Path -LiteralPath (Join-Path $approvalDir 'topic-selected.json')) 'approve-topic should write topic-selected approval file'
 
 $workitem.stage = 'awaiting_khazix_approval'

@@ -65,6 +65,22 @@ function Resolve-OpenAIWireApi {
     return 'chat'
 }
 
+function Get-CompatibleApiValue {
+    param(
+        [string]$PrimaryValue,
+        [string]$SecondaryValue,
+        [string]$DefaultValue = ''
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($PrimaryValue)) {
+        return $PrimaryValue
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SecondaryValue)) {
+        return $SecondaryValue
+    }
+    return $DefaultValue
+}
+
 function Start-GzhrbArticlePackaging {
     Initialize-Env
 
@@ -74,20 +90,20 @@ function Start-GzhrbArticlePackaging {
         $GzhrbDir = Join-Path $projectDir 'reports\gzhrb'
     }
     if ([string]::IsNullOrWhiteSpace($ApiBase)) {
-        $ApiBase = if ($env:OPENAI_API_BASE) { $env:OPENAI_API_BASE } else { 'https://api.openai.com/v1' }
+        $ApiBase = Get-CompatibleApiValue -PrimaryValue $env:OPENAI_API_BASE -SecondaryValue $env:ANTHROPIC_BASE_URL -DefaultValue 'https://api.openai.com/v1'
     }
     if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-        $ApiKey = $env:OPENAI_API_KEY
+        $ApiKey = Get-CompatibleApiValue -PrimaryValue $env:OPENAI_API_KEY -SecondaryValue $env:ANTHROPIC_AUTH_TOKEN
     }
     if ([string]::IsNullOrWhiteSpace($Model)) {
-        $Model = if ($env:OPENAI_MODEL) { $env:OPENAI_MODEL } else { 'gpt-5.4' }
+        $Model = Get-CompatibleApiValue -PrimaryValue $env:OPENAI_MODEL -SecondaryValue $env:ANTHROPIC_MODEL -DefaultValue 'gpt-5.4'
     }
     if ([string]::IsNullOrWhiteSpace($WireApi)) {
         $WireApi = Resolve-OpenAIWireApi -WireApi $env:OPENAI_WIRE_API -ApiBase $ApiBase
     }
 
     if ([string]::IsNullOrWhiteSpace($ApiKey)) {
-        throw 'Missing OPENAI_API_KEY.'
+        throw 'Missing OPENAI_API_KEY or ANTHROPIC_AUTH_TOKEN.'
     }
 
     $packagerTs = Join-Path $projectDir 'scripts\package-gzhrb-article.ts'

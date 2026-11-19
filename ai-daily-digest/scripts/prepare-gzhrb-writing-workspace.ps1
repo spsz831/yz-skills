@@ -195,18 +195,18 @@ function Start-GzhrbWritingWorkspacePreparation {
     $provenanceDir = Join-Path $provenanceRoot $articleId
     $publishUnitDir = Join-Path $publishUnitsRoot $articleId
     $optimizedArticlePath = Join-Path $articleDir 'article.md'
-    $khazixDraftPath = Join-Path $draftsDir "$articleId-khazix.md"
+    $wechatDraftPath = Join-Path $draftsDir "$articleId-wechat-draft.md"
     $workitemJsonPath = Join-Path $workitemsDir "$articleId.json"
     $workitemMarkdownPath = Join-Path $workitemsDir "$articleId.md"
     $illustrationDir = Join-Path $illustrationsRoot $articleId
 
     New-Item -ItemType Directory -Force -Path $articleDir, $approvalDir, $provenanceDir, $publishUnitDir, $illustrationDir | Out-Null
 
-    if (-not (Test-Path -LiteralPath $khazixDraftPath)) {
-        Write-Utf8TextFile -Path $khazixDraftPath -Content @"
+    if (-not (Test-Path -LiteralPath $wechatDraftPath)) {
+        Write-Utf8TextFile -Path $wechatDraftPath -Content @"
 # $TopicTitle
 
-> khazix-writer 初稿占位文件
+> wechat-article-writer 初稿占位文件
 > 正式初稿请由外部 skill 写入这个文件，或按同等内容另存后再同步到这里。
 
 "@
@@ -214,10 +214,12 @@ function Start-GzhrbWritingWorkspacePreparation {
 
     $manifest = [ordered]@{
         workflow = 'ai-yang-detective-content-pipeline'
+        workflow_version = '2-lite'
         stage = 'awaiting_topic_approval'
         writing_state = [ordered]@{
-            khazix = New-PendingWritingState
-            wechat = New-PendingWritingState
+            wechat_draft = New-PendingWritingState
+            wechat_refine = New-PendingWritingState
+            humanizer = New-PendingWritingState
         }
         execution_log = @()
         article_id = $articleId
@@ -232,7 +234,7 @@ function Start-GzhrbWritingWorkspacePreparation {
             editorial_score = $TopicScore
         }
         paths = [ordered]@{
-            khazix_draft = $khazixDraftPath
+            wechat_draft = $wechatDraftPath
             optimized_article = $optimizedArticlePath
             article_dir = $articleDir
             approval_dir = $approvalDir
@@ -242,9 +244,9 @@ function Start-GzhrbWritingWorkspacePreparation {
         }
         next_steps = @(
             "1. 先人工确认选题，并写入 $approvalDir\\topic-selected.json",
-            "2. 用 khazix-writer 围绕选题生成长文初稿，写入 $khazixDraftPath",
-            "3. 用 wechat-article-writer 基于初稿生成优化稿，保存到 $optimizedArticlePath",
-            "4. 插图与发布后半段完成后，把最终交付写入 $publishUnitDir"
+            "2. 写作或优化文章，核实事实与文风，按需使用写作技能，最终写入 $optimizedArticlePath",
+            "3. 人工终审文章并创建 writing-approved.json",
+            "4. 进入插图、回填和发布包装，最终交付写入 $publishUnitDir"
         )
     }
 
@@ -268,8 +270,8 @@ function Start-GzhrbWritingWorkspacePreparation {
         '',
         '## 预定路径',
         '',
-        "- ``khazix-writer`` 初稿：``$khazixDraftPath``",
-        "- ``wechat-article-writer`` 优化稿：``$optimizedArticlePath``",
+        "- ``wechat-article-writer`` 初稿：``$wechatDraftPath``",
+        "- ``wechat-article-writer`` 二次优化稿：``$optimizedArticlePath``",
         "- 工作稿目录：``$articleDir``",
         "- approval 目录：``$approvalDir``",
         "- provenance 目录：``$provenanceDir``",
@@ -278,19 +280,15 @@ function Start-GzhrbWritingWorkspacePreparation {
         '',
         '## 正式顺序',
         '',
-        '1. 先人工确认选题，通过后进入 `khazix-writer` 阶段',
-        '2. 用 `khazix-writer` 产出公众号长文初稿',
-        '3. 初稿人工确认通过后，再进入 `wechat-article-writer` 阶段',
-        '4. 用 `wechat-article-writer` 把初稿改成发文态优化稿，并写入优化稿路径',
-        '5. 优化稿人工确认通过后，再进入插图规划和后续发布链路',
+        '1. 先人工确认选题，通过后进入写作阶段',
+        '2. 写作或优化文章，核实事实与文风，按需使用写作技能，最终写入 `article.md`',
+        '3. 人工终审文章，确认后进入插图规划和后续发布链路',
         '',
         '## 当前状态',
         '',
         '- `awaiting_topic_approval`：等待人工确认选题',
-        '- `awaiting_khazix_execution`：选题已确认，等待 `khazix-writer` 正式执行',
-        '- `awaiting_khazix_approval`：`khazix-writer` 初稿已完成，等待人工确认',
-        '- `awaiting_wechat_execution`：初稿已确认，等待 `wechat-article-writer` 正式执行',
-        '- `awaiting_wechat_approval`：优化稿已完成，等待人工确认',
+        '- `awaiting_writing_execution`：选题已确认，等待写作或优化并保存最终文章',
+        '- `awaiting_writing_approval`：等待人工确认定稿',
         '- `awaiting_illustration_execution`：优化稿已确认，等待插图规划与生成',
         '- `awaiting_illustration_approval`：插图已完成，等待人工确认',
         '- `ready_for_publish_unit`：可进入归档、回填、发布包装和最终发布单元生成',
@@ -305,8 +303,8 @@ function Start-GzhrbWritingWorkspacePreparation {
     Write-Host "文章 ID Article ID        : $articleId"
     Write-Host "工作单 JSON Workitem      : $workitemJsonPath"
     Write-Host "工作单 Markdown Brief     : $workitemMarkdownPath"
-    Write-Host "khazix 初稿路径 Draft     : $khazixDraftPath"
-    Write-Host "wechat 优化稿路径 Article : $optimizedArticlePath"
+    Write-Host "wechat 初稿路径 Draft      : $wechatDraftPath"
+    Write-Host "wechat 二次优化稿 Article  : $optimizedArticlePath"
     Write-Host "插图目录 Illustrations    : $illustrationDir"
 }
 

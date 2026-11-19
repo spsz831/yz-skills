@@ -21,7 +21,7 @@ if not exist "%PS1%" (
 if "%~1"=="" (
   "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%PS1%"
 ) else (
-  "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%PS1%" -ArticlePath "%~1"
+  "%PS_EXE%" -NoProfile -ExecutionPolicy Bypass -File "%PS1%" %*
 )
 
 set "RC=%ERRORLEVEL%"

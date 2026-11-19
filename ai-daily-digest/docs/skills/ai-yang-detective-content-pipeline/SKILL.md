@@ -1,318 +1,35 @@
 ---
 name: ai-yang-detective-content-pipeline
-description: Use when the user wants to run the AI杨侦探 content pipeline from 48-hour digest selection through WeChat article drafting, article optimization, illustration generation, asset archiving, Markdown image insertion, and final publish packaging, or wants to resume any stage of that same pipeline.
+description: 协调 AI杨侦探从日报、独立选题或现有文章，到最终 Markdown 与公众号 SVG 代码的内容工作流；单项任务使用对应专门 skill。
 ---
 
-# ai-yang-detective-content-pipeline
+# AI杨侦探内容流水线
 
-## Overview
+从用户已有选题、文章或工作阶段继续；用户直接指定主题视为已选题，不重跑日报、不重复要求已给过的确认。项目真实规则以 `E:\WorkCodex\ai-daily-digest\AGENTS.md` 和脚本校验为准。
 
-This is a total-control orchestrator skill for the `AI杨侦探` account workflow.
+## 流程
 
-Its job is not to replace writing or illustration skills. Its job is to decide the stage, call the right downstream skill, preserve article-scoped assets, and deliver a publish-ready content package.
+1. **选题**：需要候选时生成 48 小时日报，由用户选题；已有明确主题直接继续，并按工作单记录。
+2. **写作定稿**：根据已有材料一次性完成写作或优化，核实事实、信息价值和文风；写作及综合审校时按 [开头诊断与改写](references/opening-guide.md) 处理开头，不增加审批环节。按需使用 `wechat-article-writer`、`humanizer-zh` 等技能，保存 `reports\gzhrb\articles\<article-id>\article.md`。集中交用户一次正文定稿审阅；确认通过后记录 `writing-approved.json`。初稿检查、润色和去 AI 味不分别设确认关口。
+3. **分镜与交付**：定稿通过后，保留独立博客 Markdown；先提炼故事线并设计连续的完整场景，让画面承担叙事、文字简洁，同时保留重要事实和限制。先复用用户角色素材，按分镜准备场景、真实截图和可动图层，再制作 SVG 和公众号完整代码；同时为公众号准备独立封面，具体视觉规范见 [公众号封面风格](references/cover-style.md)。插图规划与生成归属 `baoyu-article-illustrator`，封面制作使用 `yang-cover`，可按需调用现有图像工具；只生成必要缺口，只询问无法自行取得的素材或决定。
 
-Repository execution note:
+默认 `2-lite` 保留选题与正文定稿两个人工关口；provenance 和初稿审批是可选留痕。用户已明确选题或确认定稿时，根据已有证据记录，不重复询问；不凭推测伪造审批。通过 `scripts\gzhrb-writing-state.cmd` 或 `scripts\inspect-gzhrb-writing-state.cmd` 检查工作单，旧工作单遵循实际校验。正文通过后连续完成后续工作，集中提交最终审阅；用户要求分步审阅时遵从。
 
-- the local repository now stops at a formal writing gate after topic confirmation
-- it creates a workitem plus fixed output paths for `khazix-writer` and `wechat-article-writer`
-- downstream illustration and packaging scripts should resume only after the optimized article file exists on disk
+## 默认最终交付：两份文件
 
-The workflow itself is:
+在 `reports\gzhrb\publish-units\<article-id>\` 交付并直接给出两个文件路径：
 
-- run `48 小时日报`
-- extract candidate topics
-- keep a human approval gate for topic selection
-- draft with `khazix-writer`
-- optimize with `wechat-article-writer` and produce default title options
-- plan and generate illustrations with `baoyu-article-illustrator`
-- archive assets into the article directory
-- insert image references back into Markdown
-- add intro lines, topic tags, and finalize the publish package
+1. **`article.md`**：最终版 Markdown 正文，包含对应配图及适合目标博客的有效引用，独立于公众号版可完整阅读；不得以本地路径可用推断博客部署后可用。标题、引导语和话题按发布包约定一并准备。
+2. **`公众号文章.svg` 完整代码**：默认交付有效的单根 SVG 源码文件，按分镜组织多个场景或嵌套片段，并包含图片引用。若公众号实际导入需要多个并列 SVG 和 HTML 容器，另提供 `公众号SVG完整代码.html`，说明它是完整导入代码而不是单个 SVG XML；不得承诺兼容性直到实测。按实际文件在 `package.json` 记录。优先使用已上传的微信图片地址，避免本地路径或大体积 Base64；缺少必要地址时先完成独立工作，再一次列出缺口。
 
-## Goal
+项目规定的 `titles.txt`、`intro-lines.txt`、`topic-tags.txt`、`package.json`、`review-checklist.md` 与素材目录作为支持文件保留；归档所用分镜、封面、场景原图、动画图层和可编辑源码，最终答复突出 Markdown 和 SVG 两份主要成品，并附公众号封面路径。封面作为发布素材，不替代 SVG 正文，也不增加审批关口。两版允许叙事与表达方式不同，核心事实、观点和必要限制须一致。
 
-Turn one topic selected from the `48 小时日报` into a complete `AI杨侦探` WeChat publishing unit:
+仓库现有打包脚本并不负责生成或检查 SVG；状态脚本的 `completed` 不证明 SVG、公众号保存或手机预览完成。制作须另外执行，生成及检查时读取 [公众号动画 SVG 制作参考](references/wechat-svg.md)。必须有真正的 SVG 元素，不要用 PNG 长图或普通排版 HTML 冒充；承载多个 SVG 的 HTML 代码文件则明确说明其容器格式。本地浏览器预览、公众号后台保存、手机微信预览分别记录，未实际验证时不宣称通过。未经授权不发布。
 
-- optimized Markdown article
-- article-scoped illustration assets
-- image references inserted into the article
-- title options
-- intro lines
-- topic tags
+## 配图与收尾
 
-## When to Use
-
-Use this skill when the request clearly refers to the whole日报到公众号链路, or to resuming a known stage inside that same chain.
-
-Typical triggers:
-
-- `跑今天的内容工作流`
-- `从日报里挑题写今天这篇`
-- `从日报到公众号稿跑一遍`
-- `跑 AI杨侦探工作流`
-- `继续今天这篇`
-- `把这篇走到发文包`
-- `给这篇配图并归档`
-- `把这篇整理成可发布版`
-
-Trigger examples:
-
-- `完整跑一遍 48 小时日报，然后挑一个最适合写成长文的题材`
-- `从日报里挑一题，直接做成公众号发文包`
-- `继续今天这篇，把图也配完并归档`
-- `这篇已经写完了，再走完标题、引导语、标签和插图`
-- `从这篇日报继续，不要重跑前面的`
-
-Use this skill for both:
-
-- full-chain execution from digest to final package
-- state-driven resume from an existing digest, article, or illustration stage
-
-Do not use this skill when the user only wants one isolated subtask:
-
-- only run a digest
-- only write an article
-- only polish an article
-- only generate one image
-- only ask for title options, intro lines, or tags
-
-Those should stay with the existing downstream skills.
-
-Non-trigger examples:
-
-- `帮我写一篇公众号文章`
-- `帮我润色这段文案`
-- `给这篇文章补几个标题`
-- `帮我只生成一张头图`
-- `只跑今天的 48 小时日报`
-
-## Downstream Skill Routing
-
-This skill is an orchestrator. It should route work instead of re-implementing it.
-
-- `ai-daily-digest`
-  - generate the `48 小时日报`
-- `khazix-writer`
-  - produce the long-form first draft from the selected topic
-- `wechat-article-writer`
-  - optimize the article into WeChat publish style
-- `baoyu-article-illustrator`
-  - handle illustration planning, illustration generation, asset archiving, and Markdown image insertion
-
-Critical rule:
-
-- At the workflow level, both illustration planning and illustration generation belong to `baoyu-article-illustrator`
-- Do not describe stage 8 externally as any separate image tool name
-
-## Operating Sequence
-
-### Stage 1: Generate digest
-
-- Run the `48 小时日报`
-- Treat the digest as the same-day topic pool
-
-### Stage 2: Extract candidate topics
-
-- Identify topics that can support a full WeChat long-form article
-- Output short candidate judgments instead of writing immediately
-
-### Human Gate A: Topic selection
-
-- A person decides whether a topic is suitable for the public-account format
-- If none are suitable, stop and report that outcome clearly
-
-### Stage 3: Draft long-form article
-
-- Use `khazix-writer`
-- Produce a Markdown first draft at the workitem-defined draft path
-
-### Stage 4: Optimize for WeChat publication
-
-- Use `wechat-article-writer`
-- Improve opening, flow, readability, and public-account tone
-- Treat this stage externally as “公众号发文态优化”, not old internal GZHRB wording
-- Save the optimized article to the workitem-defined final article path before continuing
-
-### Stage 5: Plan illustrations
-
-- Use `baoyu-article-illustrator`
-- Analyze article structure and visual opportunities
-- Produce planning artifacts for the article
-
-### Stage 6: Generate illustrations
-
-- Continue with `baoyu-article-illustrator`
-- Keep the external workflow wording unified under the same skill
-
-### Stage 7: Archive and insert
-
-- Archive images and planning artifacts into the article-scoped folder
-- Insert relative image references back into the Markdown article
-
-### Stage 8: Build publish package
-
-- Add title options
-- Add intro lines within 20 Chinese characters when requested
-- Add topic tag keywords
-
-### Human Gate B: Final review
-
-- Review article quality
-- Review illustration quality
-- Review packaging quality
-
-### Human Gate C: Publish approval
-
-- If approved, the workflow is complete
-- If not approved, roll back to the right stage and continue iterating
-
-## Default Illustration Style
-
-Default style is `AI杨侦探插图风格 v1`.
-
-Required visual direction:
-
-- light editorial explainer style
-- diagram plus light 3D scene hybrid
-- premium and textured, but low AI feel
-- avoid dark blue, dark purple, neon, cyber-tech visual language
-
-Default image settings:
-
-- aspect ratio: `16:9`
-- quality: `2K`
-
-Default palette anchors:
-
-- `#F6F1E8`
-- `#27403A`
-- `#D8BFC5`
-- `#A56A43`
-
-Current local defaults already land in:
-
-
-## Archiving Rules
-
-Illustration assets must be article-scoped. They must not be left in a shared loose folder.
-
-Required archive root:
-
-- `reports/gzhrb/illustrations/<article-id>/`
-
-Expected contents include:
-
-- `outline.md`
-- `batch.json`
-- `prompts/`
-- generated image files
-
-Markdown image references must use relative paths that point into the same article-scoped illustration directory.
-
-Example:
-
-```md
-![配图说明](illustrations/<article-id>/01-scene.png)
-```
-
-Do not allow:
-
-- images scattered directly under `reports/gzhrb/illustrations/`
-- cross-article image references
-- generated images without archiving
-- archived images without Markdown insertion
-
-## Completion Standard
-
-Do not mark this workflow complete unless the final publish unit actually exists.
-
-Required completion conditions:
-
-1. a `48 小时日报` exists for the run
-2. one topic has been selected as suitable for a WeChat long-form article
-3. a long-form Markdown draft exists
-4. a WeChat-optimized article version exists
-5. illustration planning and illustration generation are complete
-6. illustration assets are archived into the article-scoped folder
-7. image references are inserted into the Markdown article
-8. title options, intro lines, and topic tags have been added
-9. the final publish package is ready for human review
-
-## Final Deliverables
-
-The final deliverable must include all of the following:
-
-- one optimized Markdown article
-- one article-scoped illustration directory
-- title options
-- intro line options
-- topic tag keywords
-
-Deliverable sample:
-
-```text
-reports/
-  gzhrb/
-    gzhrb-20260419-1519-khazix.md
-    illustrations/
-      gzhrb-20260419-1519-khazix/
-        outline.md
-        batch.json
-        prompts/
-        01-framework-model-vs-method-library.png
-        02-comparison-same-model-different-environment.png
-```
-
-## Failure Handling
-
-Stop and report the actual stage when blocked.
-
-Common blocking cases:
-
-- no suitable topic found in the digest
-- the selected topic is not suitable for WeChat long-form treatment
-- draft exists but still needs WeChat-style restructuring
-- illustration planning artifacts are missing
-- illustrations were generated but not archived into the article directory
-- image references were not inserted back into the Markdown
-- only article text exists, but packaging items are still missing
-
-Do not present a partial article as a final publish package.
-
-Failure rollback examples:
-
-- No suitable topic after digest review
-  - stop at the topic-selection gate
-  - do not force article drafting
-- Draft is informative but not publish-ready
-  - return to `wechat-article-writer`
-  - do not rerun digest or topic selection
-- Images were generated in the wrong visual direction
-  - return to `baoyu-article-illustrator`
-  - keep the article text and redo illustration planning/generation
-- Images exist but are not inside `reports/gzhrb/illustrations/<article-id>/`
-  - do not mark complete
-  - archive first, then re-check Markdown paths
-- Only title packaging is missing
-  - return only to the publish-package stage
-  - do not rerun article drafting or image generation
-
-## Rollback Rules
-
-If the final review fails, roll back only to the necessary stage:
-
-- article-quality issue -> return to `wechat-article-writer`
-- illustration issue -> return to `baoyu-article-illustrator`
-- packaging-only issue -> return to the publish-package stage
-
-## Acceptance Criteria
-
-This skill is being used correctly only if:
-
-1. it is treated as a workflow orchestrator, not a replacement for downstream skills
-2. topic selection remains a human approval gate
-3. both illustration planning and illustration generation are externally described under `baoyu-article-illustrator`
-4. the default illustration style is `AI杨侦探插图风格 v1`, not the older engineering-media direction
-5. illustration assets are archived into `reports/gzhrb/illustrations/<article-id>/`
-6. Markdown image references point to the article-scoped asset directory
-7. the final output includes article, images, titles, intro lines, and tags
+- 插图规划与生成使用 `baoyu-article-illustrator`。博客 Markdown 中的独立配图读取 [默认配图风格](references/illustration-style.md)；公众号 SVG 场景遵循 [公众号动画 SVG 制作参考](references/wechat-svg.md)；公众号封面使用 `yang-cover` 并遵循 [公众号封面风格](references/cover-style.md)。用户当次指定优先。
+- 每篇公众号稿都规划独立封面：定稿后提炼核心场景，按 [公众号封面风格](references/cover-style.md) 默认分别制作 `2.25:1` 横图和 `1:1` 方图；需要博客或其他渠道横版图时再补 `16:9`。核对两图比例、标题、角色一致性和裁切安全区，并把最终封面归档到发布单元。
+- 工作稿、配图和发布包按文章归档；恢复流程先检查已有文件，只重做必要部分。对事实与产品能力区分官方资料、社区经验和个人实测。
+- 只有两份核心成品、公众号封面及必要素材真实落盘并可核对，才能说完整流程已完成；单项任务按当次范围验收。缺少实际必需的审批、图片地址或其他前置条件时，报告实际卡点与已完成内容。
+- 整理旧版前核对最终文件与引用；未经确认不能误删唯一来源，适用时优先使用可恢复的清理方式。

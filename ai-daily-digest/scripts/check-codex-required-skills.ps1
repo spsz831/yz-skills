@@ -1,3 +1,13 @@
+[CmdletBinding()]
+param(
+    [string]$CodexHome,
+    [string]$SessionPath,
+    [ValidateSet('formal-writing', 'full-workflow')]
+    [string]$Profile = 'formal-writing',
+    [string]$ManifestPath,
+    [string[]]$RequiredSkills
+)
+
 $ErrorActionPreference = 'Stop'
 
 function Get-SkillsFromDeveloperText {
@@ -116,21 +126,56 @@ function Test-RequiredSkills {
     return ,$missing.ToArray()
 }
 
+function Get-RequiredSkillsProfile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath,
+        [Parameter(Mandatory = $true)]
+        [string]$Profile
+    )
+
+    if (-not (Test-Path -LiteralPath $ManifestPath)) {
+        throw "External skill manifest not found: $ManifestPath"
+    }
+
+    $manifest = Get-Content -Raw -LiteralPath $ManifestPath | ConvertFrom-Json
+    $profileDefinition = $manifest.profiles.PSObject.Properties[$Profile]
+    if ($null -eq $profileDefinition) {
+        $availableProfiles = ($manifest.profiles.PSObject.Properties.Name -join ', ')
+        throw "Unknown skill check profile '$Profile'. Available profiles: $availableProfiles"
+    }
+
+    $skills = @($profileDefinition.Value.skills)
+    if ($skills.Count -eq 0) {
+        throw "Skill check profile '$Profile' has no required skills."
+    }
+
+    return ,$skills
+}
+
 function Invoke-CodexRequiredSkillsCheck {
     param(
         [string]$CodexHome = (Join-Path $HOME '.codex'),
         [string]$SessionPath,
-        [string[]]$RequiredSkills = @('khazix-writer', 'wechat-article-writer')
+        [ValidateSet('formal-writing', 'full-workflow')]
+        [string]$Profile = 'formal-writing',
+        [string]$ManifestPath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'docs\skills\external-skill-dependencies.json'),
+        [string[]]$RequiredSkills
     )
 
     if ([string]::IsNullOrWhiteSpace($SessionPath)) {
         $SessionPath = Get-LatestCodexSessionPath -CodexHome $CodexHome
     }
 
+    if ($null -eq $RequiredSkills -or $RequiredSkills.Count -eq 0) {
+        $RequiredSkills = Get-RequiredSkillsProfile -ManifestPath $ManifestPath -Profile $Profile
+    }
+
     $availableSkills = Get-AvailableSkillsFromSession -SessionPath $SessionPath
     $missingSkills = Test-RequiredSkills -AvailableSkills $availableSkills -RequiredSkills $RequiredSkills
 
     Write-Host "[INFO] Session: $SessionPath"
+    Write-Host "[INFO] Profile: $Profile"
     Write-Host "[INFO] Available skills count: $($availableSkills.Count)"
 
     if ($missingSkills.Count -eq 0) {
@@ -150,7 +195,7 @@ function Invoke-CodexRequiredSkillsCheck {
         }
     }
 
-    Write-Host "[STOP] Do not treat this window as the formal dual-skill writing environment."
+    Write-Host "[STOP] Do not treat this window as ready for profile '$Profile'."
     return 2
 }
 

@@ -72,6 +72,11 @@ function Assert-GzhrbCurrentStage {
     )
 
     $currentStage = [string]$Workitem.stage
+    if ([string]$Workitem.workflow_version -eq '2-lite' -and
+        $Stage -eq 'writing_approved' -and
+        $currentStage -in @('awaiting_writing_execution', 'awaiting_writing_approval')) {
+        return
+    }
     if ($currentStage -ne $ExpectedStage) {
         throw "Current stage does not allow approval '$Stage'. Expected '$ExpectedStage' but got '$currentStage'."
     }
@@ -87,9 +92,29 @@ function Get-GzhrbStageConfig {
                 stage = 'topic_selected'
                 approval_file = 'topic-selected.json'
                 expected_stage = 'awaiting_topic_approval'
-                next_stage = 'awaiting_khazix_execution'
+                next_stage = 'awaiting_wechat_draft_execution'
                 action = 'approve_topic_selected'
                 evidence = 'none'
+            }
+        }
+        'wechat_draft_approved' {
+            return [pscustomobject]@{
+                stage = 'wechat_draft_approved'
+                approval_file = 'wechat-draft-approved.json'
+                expected_stage = 'awaiting_wechat_draft_approval'
+                next_stage = 'awaiting_wechat_refinement_execution'
+                action = 'approve_wechat_draft'
+                evidence = 'wechat_draft'
+            }
+        }
+        'writing_approved' {
+            return [pscustomobject]@{
+                stage = 'writing_approved'
+                approval_file = 'writing-approved.json'
+                expected_stage = 'awaiting_writing_approval'
+                next_stage = 'awaiting_illustration_execution'
+                action = 'approve_writing'
+                evidence = 'humanizer'
             }
         }
         'khazix_approved' {
@@ -249,6 +274,19 @@ function Assert-GzhrbStageEvidence {
 
     switch ($StageConfig.evidence) {
         'none' { return }
+        'wechat_draft' {
+            $draftPath = if ($Workitem.paths.wechat_draft) { [string]$Workitem.paths.wechat_draft } else { [string]$Workitem.paths.khazix_draft }
+            if (-not (Test-IsMeaningfulTextFile -Path $draftPath) -or (Test-IsPlaceholderWechatDraft -Path $draftPath)) { throw "Wechat draft is missing, empty, or still a placeholder: $draftPath" }
+            Assert-GzhrbExecutionProvenance -ProvenancePath (Join-Path $ProvenanceDir 'wechat-draft-execution.json') -RequiredSkillName 'wechat-article-writer' -EvidenceLabel 'wechat_draft_approved' -RequiredOutputPath $draftPath -ProjectDir $ProjectDir
+            return
+        }
+        'humanizer' {
+            $articlePath = [string]$Workitem.paths.optimized_article
+            if (-not (Test-IsMeaningfulTextFile -Path $articlePath)) { throw "Final article is missing or empty: $articlePath" }
+            if ([string]$Workitem.workflow_version -eq '2-lite') { return }
+            Assert-GzhrbExecutionProvenance -ProvenancePath (Join-Path $ProvenanceDir 'humanizer-execution.json') -RequiredSkillName 'humanizer-zh' -EvidenceLabel 'writing_approved' -RequiredOutputPath $articlePath -ProjectDir $ProjectDir
+            return
+        }
         'khazix' {
             Assert-GzhrbKhazixEvidence -Workitem $Workitem -ProvenanceDir $ProvenanceDir -ProjectDir $ProjectDir
             return
@@ -322,12 +360,16 @@ function Set-GzhrbStageApproval {
     Write-Utf8TextFile -Path $approvalPath -Content ($approvalPayload | ConvertTo-Json -Depth 6)
 
     $previousStage = [string]$workitem.stage
-    $workitem.stage = $stageConfig.next_stage
+    $nextStage = $stageConfig.next_stage
+    if ([string]$workitem.workflow_version -eq '2-lite' -and $stageConfig.stage -eq 'topic_selected') {
+        $nextStage = 'awaiting_writing_execution'
+    }
+    $workitem.stage = $nextStage
     $workitem.execution_log = @($workitem.execution_log) + [pscustomobject]@{
         timestamp = $timestamp
         action = $stageConfig.action
         stage_before = $previousStage
-        stage_after = $stageConfig.next_stage
+        stage_after = $nextStage
         updated_by = $ApprovedBy
         approval_path = $approvalPath
         note = $Note

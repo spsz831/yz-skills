@@ -1,9 +1,16 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawn } from 'node:child_process';
 import process from 'node:process';
 
 export const GEMINI_DEFAULT_MODEL = 'gemini-3.1-pro-preview';
 export const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 export const OPENAI_DEFAULT_API_BASE = 'https://api.openai.com/v1';
 export const OPENAI_DEFAULT_MODEL = 'gpt-4o-mini';
+const AI_REQUEST_TIMEOUT_MS = 30_000;
+const CODEX_CLI_TIMEOUT_MS = 120_000;
 
 export type OpenAIWireApi = 'chat' | 'responses';
 
@@ -16,6 +23,64 @@ export interface OpenAIConfig {
 
 export interface AIClient {
   call(prompt: string): Promise<string>;
+}
+
+type RepoEnvMap = Record<string, string>;
+
+let cachedRepoEnv: RepoEnvMap | null = null;
+
+function parseRepoEnvFile(): RepoEnvMap {
+  const envPath = join(process.cwd(), '.env');
+  if (!existsSync(envPath)) {
+    return {};
+  }
+
+  const result: RepoEnvMap = {};
+  const content = readFileSync(envPath, 'utf8');
+
+  for (const rawLine of content.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('#')) continue;
+
+    const eqIndex = line.indexOf('=');
+    if (eqIndex <= 0) continue;
+
+    const key = line.slice(0, eqIndex).trim();
+    let value = line.slice(eqIndex + 1).trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith('\'') && value.endsWith('\''))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    result[key] = value;
+  }
+
+  return result;
+}
+
+function getRepoEnvValue(key: string): string | undefined {
+  if (cachedRepoEnv === null) {
+    cachedRepoEnv = parseRepoEnvFile();
+  }
+
+  if (Object.prototype.hasOwnProperty.call(cachedRepoEnv, key)) {
+    return cachedRepoEnv[key];
+  }
+
+  return undefined;
+}
+
+function pickFirstNonEmpty(...values: Array<string | undefined>): string | undefined {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+  }
+
+  return undefined;
 }
 
 function inferWireApiFromBase(apiBase?: string): OpenAIWireApi | null {
@@ -110,6 +175,95 @@ function extractTextFromResponseJson(data: unknown): string {
   return '';
 }
 
+async function fetchWithTimeout(input: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), AI_REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`AI request timed out after ${AI_REQUEST_TIMEOUT_MS / 1000}s`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function callCodexCli(prompt: string, model?: string, reasoningEffort = 'low'): Promise<string> {
+  const tempDir = await mkdtemp(join(tmpdir(), 'ai-daily-digest-codex-'));
+  const outputPath = join(tempDir, 'last-message.txt');
+  const command = process.platform === 'win32' ? 'node' : 'codex';
+  const codexEntry = process.platform === 'win32'
+    ? join(process.env.APPDATA ?? '', 'npm', 'node_modules', '@openai', 'codex', 'bin', 'codex.js')
+    : '';
+  const args = [
+    ...(codexEntry ? [codexEntry] : []),
+    'exec',
+    '-c', `model_reasoning_effort=${JSON.stringify(reasoningEffort)}`,
+    '--ephemeral',
+    '--sandbox', 'read-only',
+    '--skip-git-repo-check',
+    '--color', 'never',
+    ...(model?.trim() ? ['--model', model.trim()] : []),
+    '--output-last-message', outputPath,
+    '-',
+  ];
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn(command, args, {
+        cwd: process.cwd(),
+        windowsHide: true,
+        stdio: ['pipe', 'ignore', 'pipe'],
+      });
+      let stderr = '';
+      let settled = false;
+      const timer = setTimeout(() => {
+        if (settled) return;
+        settled = true;
+        child.kill();
+        reject(new Error(`process timed out after ${CODEX_CLI_TIMEOUT_MS / 1000}s`));
+      }, CODEX_CLI_TIMEOUT_MS);
+
+      child.stderr?.on('data', (chunk) => {
+        stderr += String(chunk);
+        if (stderr.length > 10 * 1024 * 1024) stderr = stderr.slice(-10 * 1024 * 1024);
+      });
+      child.once('error', (error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(error);
+      });
+      // Descendant processes can inherit stderr on Windows and keep the pipe
+      // open after Codex exits. Waiting for "close" would then report a timeout
+      // despite a successful result; "exit" tracks the launched process itself.
+      child.once('exit', (code, signal) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        child.stderr?.destroy();
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`exit code ${code ?? 'unknown'}${signal ? ` (${signal})` : ''}: ${stderr.trim()}`));
+        }
+      });
+      child.stdin.write(prompt);
+      child.stdin.end();
+    });
+    const content = (await readFile(outputPath, 'utf8')).trim();
+    if (!content) throw new Error('Codex CLI returned empty content');
+    return content;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Codex CLI request failed: ${message}`);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
 function extractTextFromResponsesSse(raw: string): string {
   const dataLines = [...raw.matchAll(/^data:\s*(\{.*\})$/gm)];
   const doneTexts: string[] = [];
@@ -147,7 +301,7 @@ function extractTextFromResponsesSse(raw: string): string {
 export async function callGemini(prompt: string, apiKey: string, model: string): Promise<string> {
   const resolvedModel = (model.trim() || GEMINI_DEFAULT_MODEL).replace(/^models\//, '');
   const geminiUrl = `${GEMINI_API_BASE}/${resolvedModel}:generateContent`;
-  const response = await fetch(`${geminiUrl}?key=${apiKey}`, {
+  const response = await fetchWithTimeout(`${geminiUrl}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -188,7 +342,7 @@ export async function callOpenAICompatible(prompt: string, config: OpenAIConfig)
   }
 
   if (wireApi === 'responses') {
-    const response = await fetch(`${apiBase}/responses`, {
+    const response = await fetchWithTimeout(`${apiBase}/responses`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -220,7 +374,7 @@ export async function callOpenAICompatible(prompt: string, config: OpenAIConfig)
     throw new Error('Responses API returned empty content');
   }
 
-  const response = await fetch(`${apiBase}/chat/completions`, {
+  const response = await fetchWithTimeout(`${apiBase}/chat/completions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -268,6 +422,9 @@ function isGeminiConnectionError(error: unknown): boolean {
 }
 
 export function createAIClient(config: {
+  provider?: string;
+  codexCliModel?: string;
+  codexCliReasoningEffort?: string;
   geminiApiKey?: string;
   geminiModel?: string;
   openaiApiKey?: string;
@@ -276,6 +433,9 @@ export function createAIClient(config: {
   openaiWireApi?: string;
 }): AIClient {
   const state = {
+    provider: config.provider?.trim().toLowerCase() || '',
+    codexCliModel: config.codexCliModel?.trim() || '',
+    codexCliReasoningEffort: config.codexCliReasoningEffort?.trim() || 'low',
     geminiApiKey: config.geminiApiKey?.trim() || '',
     geminiModel: config.geminiModel?.trim() || GEMINI_DEFAULT_MODEL,
     openaiApiKey: config.openaiApiKey?.trim() || '',
@@ -294,6 +454,9 @@ export function createAIClient(config: {
 
   return {
     async call(prompt: string): Promise<string> {
+      if (state.provider === 'codex-cli') {
+        return callCodexCli(prompt, state.codexCliModel, state.codexCliReasoningEffort);
+      }
       if (state.geminiEnabled && state.geminiApiKey) {
         try {
           const result = await callGemini(prompt, state.geminiApiKey, state.geminiModel);
@@ -351,12 +514,44 @@ export function createAIClient(config: {
 }
 
 export function loadAiEnv() {
+  const repoAiProvider = getRepoEnvValue('AI_PROVIDER');
+  const repoCodexCliModel = getRepoEnvValue('CODEX_CLI_MODEL');
+  const repoCodexCliReasoningEffort = getRepoEnvValue('CODEX_CLI_REASONING_EFFORT');
+  const repoGeminiApiKey = getRepoEnvValue('GEMINI_API_KEY');
+  const repoGeminiModel = getRepoEnvValue('GEMINI_MODEL');
+  const repoOpenaiApiKey = getRepoEnvValue('OPENAI_API_KEY');
+  const repoOpenaiApiBase = getRepoEnvValue('OPENAI_API_BASE');
+  const repoOpenaiModel = getRepoEnvValue('OPENAI_MODEL');
+  const repoOpenaiWireApi = getRepoEnvValue('OPENAI_WIRE_API');
+  const repoAnthropicApiKey = getRepoEnvValue('ANTHROPIC_AUTH_TOKEN');
+  const repoAnthropicApiBase = getRepoEnvValue('ANTHROPIC_BASE_URL');
+  const repoAnthropicModel = getRepoEnvValue('ANTHROPIC_MODEL');
+
   return {
-    geminiApiKey: process.env.GEMINI_API_KEY,
-    geminiModel: process.env.GEMINI_MODEL,
-    openaiApiKey: process.env.OPENAI_API_KEY,
-    openaiApiBase: process.env.OPENAI_API_BASE,
-    openaiModel: process.env.OPENAI_MODEL,
-    openaiWireApi: process.env.OPENAI_WIRE_API,
+    provider: pickFirstNonEmpty(repoAiProvider, process.env.AI_PROVIDER),
+    codexCliModel: pickFirstNonEmpty(repoCodexCliModel, process.env.CODEX_CLI_MODEL),
+    codexCliReasoningEffort: pickFirstNonEmpty(repoCodexCliReasoningEffort, process.env.CODEX_CLI_REASONING_EFFORT),
+    geminiApiKey: pickFirstNonEmpty(repoGeminiApiKey, process.env.GEMINI_API_KEY),
+    geminiModel: pickFirstNonEmpty(repoGeminiModel, process.env.GEMINI_MODEL),
+    openaiApiKey: pickFirstNonEmpty(
+      repoOpenaiApiKey,
+      process.env.OPENAI_API_KEY,
+      repoAnthropicApiKey,
+      process.env.ANTHROPIC_AUTH_TOKEN,
+    ),
+    openaiApiBase: pickFirstNonEmpty(
+      repoOpenaiApiBase,
+      process.env.OPENAI_API_BASE,
+      repoAnthropicApiBase,
+      process.env.ANTHROPIC_BASE_URL,
+    ),
+    openaiModel: pickFirstNonEmpty(
+      // A script-level -Model override is safe: it changes no credentials or endpoint.
+      process.env.OPENAI_MODEL,
+      repoOpenaiModel,
+      process.env.ANTHROPIC_MODEL,
+      repoAnthropicModel,
+    ),
+    openaiWireApi: pickFirstNonEmpty(process.env.OPENAI_WIRE_API, repoOpenaiWireApi),
   };
 }

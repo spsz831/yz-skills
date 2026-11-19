@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "source_of_truth": "This manifest records external runtime skills required by the AI Yang Detective workflow. It does not vendor third-party skill source code.",
+  "profiles": {
+    "formal-writing": {
+      "description": "Required before treating the current Codex window as the formal writing environment.",
+      "skills": [
+        "wechat-article-writer",
+        "humanizer-zh"
+      ]
+    },
+    "full-workflow": {
+      "description": "Required before running the complete workflow through illustration planning and generation.",
+      "skills": [
+        "wechat-article-writer",
+        "humanizer-zh",
+        "baoyu-article-illustrator"
+      ]
+    }
+  },
+  "skills": [
+    {
+      "name": "wechat-article-writer",
+      "kind": "external-required",
+      "stage": "article first draft and second WeChat refinement",
+      "evidence": "draft/refinement files plus execution records"
+    },
+    {
+      "name": "baoyu-article-illustrator",
+      "kind": "external-required",
+      "stage": "illustration planning and generation",
+      "evidence": "article-scoped plan, generated assets, and illustration provenance"
+    },
+    {
+      "name": "deep-research",
+      "kind": "optional-enhancement",
+      "stage": "research enhancement",
+      "evidence": "not a workflow gate"
+    },
+    {
+      "name": "humanizer-zh",
+      "kind": "external-required",
+      "stage": "remove AI-like phrasing before finalization",
+      "evidence": "humanizer execution record and final article review"
+    }
+  ]
+}

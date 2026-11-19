@@ -67,7 +67,7 @@ Assert-True (-not [string]::IsNullOrWhiteSpace($workitemJsonPath)) 'Should creat
 $workitem = Get-Content -Raw -LiteralPath $workitemJsonPath | ConvertFrom-Json
 $articleId = $workitem.article_id
 Assert-True ($articleId -match '^gzhrb-\d{6}-\d{4}-[a-z0-9-]+-[0-9a-f]{8}$') 'Article id should use short date, time, topic slug and hash'
-$draftPath = Join-Path $gzhrbDir "drafts\$articleId-khazix.md"
+$draftPath = Join-Path $gzhrbDir "drafts\$articleId-wechat-draft.md"
 $articleDir = Join-Path $gzhrbDir "articles\$articleId"
 $approvalDir = Join-Path $gzhrbDir "approvals\$articleId"
 $provenanceDir = Join-Path $gzhrbDir "provenance\$articleId"
@@ -75,7 +75,7 @@ $publishUnitDir = Join-Path $gzhrbDir "publish-units\$articleId"
 $optimizedPath = Join-Path $articleDir 'article.md'
 $workitemMarkdownPath = Join-Path $gzhrbDir "workitems\$articleId.md"
 
-Assert-True (Test-Path -LiteralPath $draftPath) 'Should create khazix draft placeholder'
+Assert-True (Test-Path -LiteralPath $draftPath) 'Should create wechat draft placeholder'
 Assert-True (Test-Path -LiteralPath $articleDir) 'Should create article working directory'
 Assert-True (Test-Path -LiteralPath $approvalDir) 'Should create approval directory'
 Assert-True (Test-Path -LiteralPath $provenanceDir) 'Should create provenance directory'
@@ -84,19 +84,13 @@ Assert-True (Test-Path -LiteralPath $workitemMarkdownPath) 'Should create workit
 Assert-True (-not (Test-Path -LiteralPath $optimizedPath)) 'Should not create optimized article before external skills write it'
 
 Assert-Equal $workitem.article_id $articleId 'Should persist article id in workitem json'
+Assert-Equal $workitem.workflow_version '2-lite' 'New workitem should use the lightweight workflow'
 Assert-Equal $workitem.stage 'awaiting_topic_approval' 'Should mark stage as awaiting topic approval'
-Assert-Equal $workitem.writing_state.khazix.status 'pending' 'Should initialize khazix writing state'
-Assert-Equal $workitem.writing_state.khazix.completed_at $null 'Should initialize khazix completed_at as null'
-Assert-Equal $workitem.writing_state.khazix.updated_at $null 'Should initialize khazix updated_at as null'
-Assert-Equal $workitem.writing_state.khazix.updated_by $null 'Should initialize khazix updated_by as null'
-Assert-Equal $workitem.writing_state.khazix.source_path $null 'Should initialize khazix source_path as null'
-Assert-Equal $workitem.writing_state.wechat.status 'pending' 'Should initialize wechat writing state'
-Assert-Equal $workitem.writing_state.wechat.completed_at $null 'Should initialize wechat completed_at as null'
-Assert-Equal $workitem.writing_state.wechat.updated_at $null 'Should initialize wechat updated_at as null'
-Assert-Equal $workitem.writing_state.wechat.updated_by $null 'Should initialize wechat updated_by as null'
-Assert-Equal $workitem.writing_state.wechat.source_path $null 'Should initialize wechat source_path as null'
+Assert-Equal $workitem.writing_state.wechat_draft.status 'pending' 'Should initialize wechat draft writing state'
+Assert-Equal $workitem.writing_state.wechat_refine.status 'pending' 'Should initialize wechat refinement writing state'
+Assert-Equal $workitem.writing_state.humanizer.status 'pending' 'Should initialize humanizer writing state'
 Assert-Equal $workitem.execution_log.Count 0 'Should initialize empty execution log'
-Assert-Equal $workitem.paths.khazix_draft $draftPath 'Should persist khazix draft path'
+Assert-Equal $workitem.paths.wechat_draft $draftPath 'Should persist wechat draft path'
 Assert-Equal $workitem.paths.optimized_article $optimizedPath 'Should persist optimized article path'
 Assert-Equal $workitem.paths.article_dir $articleDir 'Should persist article directory'
 Assert-Equal $workitem.paths.approval_dir $approvalDir 'Should persist approval directory'
@@ -104,11 +98,10 @@ Assert-Equal $workitem.paths.provenance_dir $provenanceDir 'Should persist prove
 Assert-Equal $workitem.paths.publish_unit_dir $publishUnitDir 'Should persist publish unit directory'
 
 $draftContent = Read-TestUtf8File -Path $draftPath
-Assert-True ($draftContent.Contains('khazix-writer')) 'Draft placeholder should mention khazix-writer'
+Assert-True ($draftContent.Contains('wechat-article-writer')) 'Draft placeholder should mention wechat-article-writer'
 $workitemMarkdown = Read-TestUtf8File -Path $workitemMarkdownPath
 Assert-True ($workitemMarkdown.Contains('awaiting_topic_approval')) 'Workitem markdown should describe topic approval stage'
-Assert-True ($workitemMarkdown.Contains('awaiting_khazix_execution')) 'Workitem markdown should describe khazix execution stage'
-Assert-True ($workitemMarkdown.Contains('awaiting_wechat_execution')) 'Workitem markdown should describe wechat execution stage'
+Assert-True ($workitemMarkdown.Contains('awaiting_writing_execution')) 'Workitem markdown should describe the lightweight writing stage'
 Assert-True ($workitemMarkdown.Contains('ready_for_publish_unit')) 'Workitem markdown should describe publish-unit-ready stage'
 
 Remove-Item -LiteralPath $tempRoot -Recurse -Force

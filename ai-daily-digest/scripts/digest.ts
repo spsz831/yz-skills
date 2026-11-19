@@ -16,12 +16,14 @@ const FEED_FETCH_TIMEOUT_MS = 15_000;
 const FEED_CONCURRENCY = 10;
 const GEMINI_BATCH_SIZE = 10;
 const MAX_CONCURRENT_GEMINI = 2;
+const SCORING_RETRY_DELAY_MS = 1_500;
+const SUMMARY_RETRY_DELAY_MS = 1_500;
+const MIN_SUMMARY_LENGTH = 40;
 const WAYTOAGI_BLOG_URL = 'https://www.waytoagi.com/zh/blog';
 const WAYTOAGI_SOURCE_NAME = 'waytoagi-blog';
 const WAYTOAGI_SOURCE_URL = 'https://www.waytoagi.com/zh/blog';
 const HUGGINGFACE_PAPERS_SOURCE_NAME = 'huggingface.co/papers';
 const HUGGINGFACE_PAPERS_SOURCE_URL = 'https://huggingface.co/papers';
-const DEFAULT_WATCH_KEYWORDS = ['Hermes', 'Hermes Agent'];
 
 // 90 RSS feeds from Hacker News Popularity Contest 2025 (curated by Karpathy)
 const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }> = [
@@ -216,12 +218,6 @@ interface ScoredArticle extends Article {
   reason: string;
 }
 
-interface WatchMatch {
-  keyword: string;
-  article: Article;
-  matchedIn: Array<'title' | 'description' | 'source'>;
-}
-
 interface GeminiScoringResult {
   results: Array<{
     index: number;
@@ -292,7 +288,7 @@ function getTagContent(xml: string, tagName: string): string {
     new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, 'i'),
     new RegExp(`<${tagName}[^>]*/>`, 'i'), // self-closing
   ];
-  
+
   for (const pattern of patterns) {
     const match = xml.match(pattern);
     if (match?.[1]) {
@@ -310,10 +306,10 @@ function getAttrValue(xml: string, tagName: string, attrName: string): string {
 
 function parseDate(dateStr: string): Date | null {
   if (!dateStr) return null;
-  
+
   const d = new Date(dateStr);
   if (!isNaN(d.getTime())) return d;
-  
+
   // Try common RSS date formats
   // RFC 822: "Mon, 01 Jan 2024 00:00:00 GMT"
   const rfc822 = dateStr.match(/(\d{1,2})\s+(\w{3})\s+(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
@@ -321,16 +317,16 @@ function parseDate(dateStr: string): Date | null {
     const parsed = new Date(dateStr);
     if (!isNaN(parsed.getTime())) return parsed;
   }
-  
+
   return null;
 }
 
 function parseRSSItems(xml: string): Array<{ title: string; link: string; pubDate: string; description: string }> {
   const items: Array<{ title: string; link: string; pubDate: string; description: string }> = [];
-  
+
   // Detect format: Atom vs RSS
   const isAtom = xml.includes('<feed') && xml.includes('xmlns="http://www.w3.org/2005/Atom"') || xml.includes('<feed ');
-  
+
   if (isAtom) {
     // Atom format: <entry>
     const entryPattern = /<entry[\s>]([\s\S]*?)<\/entry>/gi;
@@ -338,21 +334,21 @@ function parseRSSItems(xml: string): Array<{ title: string; link: string; pubDat
     while ((entryMatch = entryPattern.exec(xml)) !== null) {
       const entryXml = entryMatch[1];
       const title = stripHtml(getTagContent(entryXml, 'title'));
-      
+
       // Atom link: <link href="..." rel="alternate"/>
       let link = getAttrValue(entryXml, 'link[^>]*rel="alternate"', 'href');
       if (!link) {
         link = getAttrValue(entryXml, 'link', 'href');
       }
-      
+
       const pubDate = getTagContent(entryXml, 'published') 
         || getTagContent(entryXml, 'updated');
-      
+
       const description = stripHtml(
         getTagContent(entryXml, 'summary') 
         || getTagContent(entryXml, 'content')
       );
-      
+
       if (title || link) {
         items.push({ title, link, pubDate, description: description.slice(0, 500) });
       }
@@ -372,13 +368,13 @@ function parseRSSItems(xml: string): Array<{ title: string; link: string; pubDat
         getTagContent(itemXml, 'description') 
         || getTagContent(itemXml, 'content:encoded')
       );
-      
+
       if (title || link) {
         items.push({ title, link, pubDate, description: description.slice(0, 500) });
       }
     }
   }
-  
+
   return items;
 }
 
@@ -400,7 +396,7 @@ async function fetchFeed(feed: { name: string; xmlUrl: string; htmlUrl: string }
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FEED_FETCH_TIMEOUT_MS);
-    
+
     const response = await fetch(feed.xmlUrl, {
       signal: controller.signal,
       headers: {
@@ -408,16 +404,16 @@ async function fetchFeed(feed: { name: string; xmlUrl: string; htmlUrl: string }
         'Accept': 'application/rss+xml, application/atom+xml, application/xml, text/xml, */*',
       },
     });
-    
+
     clearTimeout(timeout);
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    
+
     const xml = await response.text();
     const items = parseRSSItems(xml);
-    
+
     const articles = items.map(item => ({
       title: item.title,
       link: item.link,
@@ -466,11 +462,11 @@ async function fetchAllFeeds(feeds: typeof RSS_FEEDS): Promise<{ articles: Artic
   const healthEntries: FeedHealthEntry[] = [];
   let successCount = 0;
   let failCount = 0;
-  
+
   for (let i = 0; i < feeds.length; i += FEED_CONCURRENCY) {
     const batch = feeds.slice(i, i + FEED_CONCURRENCY);
     const results = await Promise.allSettled(batch.map(fetchFeed));
-    
+
     for (const result of results) {
       if (result.status === 'fulfilled') {
         allArticles.push(...result.value.articles);
@@ -485,11 +481,11 @@ async function fetchAllFeeds(feeds: typeof RSS_FEEDS): Promise<{ articles: Artic
         failCount++;
       }
     }
-    
+
     const progress = Math.min(i + FEED_CONCURRENCY, feeds.length);
     console.log(`[digest] Progress: ${progress}/${feeds.length} feeds processed (${successCount} ok, ${failCount} failed)`);
   }
-  
+
   console.log(`[digest] Fetched ${allArticles.length} articles from ${successCount} feeds (${failCount} failed)`);
   return { articles: allArticles, healthEntries };
 }
@@ -754,31 +750,32 @@ async function scoreArticlesWithAI(
   aiClient: AIClient
 ): Promise<Map<number, { relevance: number; quality: number; timeliness: number; category: CategoryId; keywords: string[] }>> {
   const allScores = new Map<number, { relevance: number; quality: number; timeliness: number; category: CategoryId; keywords: string[] }>();
-  
+  const failedBatches: string[] = [];
+
   const indexed = articles.map((article, index) => ({
     index,
     title: article.title,
     description: article.description,
     sourceName: article.sourceName,
   }));
-  
+
   const batches: typeof indexed[] = [];
   for (let i = 0; i < indexed.length; i += GEMINI_BATCH_SIZE) {
     batches.push(indexed.slice(i, i + GEMINI_BATCH_SIZE));
   }
-  
+
   console.log(`[digest] AI scoring: ${articles.length} articles in ${batches.length} batches`);
-  
+
   const validCategories = new Set<string>(['ai-ml', 'security', 'engineering', 'tools', 'opinion', 'other']);
-  
-  for (let i = 0; i < batches.length; i += MAX_CONCURRENT_GEMINI) {
-    const batchGroup = batches.slice(i, i + MAX_CONCURRENT_GEMINI);
-    const promises = batchGroup.map(async (batch) => {
+
+  const scoreBatch = async (batch: typeof indexed): Promise<void> => {
+    const prompt = buildScoringPrompt(batch);
+
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
       try {
-        const prompt = buildScoringPrompt(batch);
         const responseText = await aiClient.call(prompt);
         const parsed = parseJsonResponse<GeminiScoringResult>(responseText);
-        
+
         if (parsed.results && Array.isArray(parsed.results)) {
           for (const result of parsed.results) {
             const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
@@ -792,18 +789,37 @@ async function scoreArticlesWithAI(
             });
           }
         }
+        return;
       } catch (error) {
-        console.warn(`[digest] Scoring batch failed: ${error instanceof Error ? error.message : String(error)}`);
-        for (const item of batch) {
-          allScores.set(item.index, { relevance: 5, quality: 5, timeliness: 5, category: 'other', keywords: [] });
+        if (attempt === 1) {
+          console.warn(`[digest] Scoring batch failed on attempt 1, retrying once: ${error instanceof Error ? error.message : String(error)}`);
+          await new Promise((resolve) => setTimeout(resolve, SCORING_RETRY_DELAY_MS));
+          continue;
         }
+
+        const message = error instanceof Error ? error.message : String(error);
+        failedBatches.push(`indexes ${batch.map((item) => item.index).join(',')}: ${message}`);
+        console.warn(`[digest] Scoring batch failed after retry: ${message}`);
       }
-    });
-    
+    }
+  };
+
+  for (let i = 0; i < batches.length; i += MAX_CONCURRENT_GEMINI) {
+    const batchGroup = batches.slice(i, i + MAX_CONCURRENT_GEMINI);
+    const promises = batchGroup.map((batch) => scoreBatch(batch));
+
     await Promise.all(promises);
     console.log(`[digest] Scoring progress: ${Math.min(i + MAX_CONCURRENT_GEMINI, batches.length)}/${batches.length} batches`);
   }
-  
+
+  if (failedBatches.length > 0) {
+    throw new Error(
+      `AI scoring failed for ${failedBatches.length} batch(es). ` +
+      'No digest was written with default scores. Check the configured text model and API route. ' +
+      failedBatches.join(' | ')
+    );
+  }
+
   return allScores;
 }
 
@@ -861,10 +877,12 @@ ${articlesList}
 async function summarizeArticles(
   articles: Array<Article & { index: number }>,
   aiClient: AIClient,
-  lang: 'zh' | 'en'
+  lang: 'zh' | 'en',
+  batchSize = GEMINI_BATCH_SIZE
 ): Promise<Map<number, { titleZh: string; summary: string; reason: string }>> {
   const summaries = new Map<number, { titleZh: string; summary: string; reason: string }>();
-  
+  const failedBatches: string[] = [];
+
   const indexed = articles.map(a => ({
     index: a.index,
     title: a.title,
@@ -872,43 +890,72 @@ async function summarizeArticles(
     sourceName: a.sourceName,
     link: a.link,
   }));
-  
+
   const batches: typeof indexed[] = [];
-  for (let i = 0; i < indexed.length; i += GEMINI_BATCH_SIZE) {
-    batches.push(indexed.slice(i, i + GEMINI_BATCH_SIZE));
+  for (let i = 0; i < indexed.length; i += batchSize) {
+    batches.push(indexed.slice(i, i + batchSize));
   }
-  
+
   console.log(`[digest] Generating summaries for ${articles.length} articles in ${batches.length} batches`);
-  
+
   for (let i = 0; i < batches.length; i += MAX_CONCURRENT_GEMINI) {
     const batchGroup = batches.slice(i, i + MAX_CONCURRENT_GEMINI);
     const promises = batchGroup.map(async (batch) => {
-      try {
-        const prompt = buildSummaryPrompt(batch, lang);
-        const responseText = await aiClient.call(prompt);
-        const parsed = parseJsonResponse<GeminiSummaryResult>(responseText);
-        
-        if (parsed.results && Array.isArray(parsed.results)) {
-          for (const result of parsed.results) {
-            summaries.set(result.index, {
-              titleZh: result.titleZh || '',
-              summary: result.summary || '',
-              reason: result.reason || '',
+      const prompt = buildSummaryPrompt(batch, lang);
+
+      for (let attempt = 1; attempt <= 2; attempt += 1) {
+        try {
+          const responseText = await aiClient.call(prompt);
+          const parsed = parseJsonResponse<GeminiSummaryResult>(responseText);
+
+          if (!parsed.results || !Array.isArray(parsed.results)) {
+            throw new Error('summary response did not contain a results array');
+          }
+
+          const batchResults = new Map(parsed.results.map((result) => [result.index, result]));
+          for (const item of batch) {
+            const result = batchResults.get(item.index);
+            const summary = result?.summary?.trim() || '';
+            if (!result || summary.length < MIN_SUMMARY_LENGTH || summary === item.title.trim()) {
+              throw new Error(`invalid summary for article index ${item.index}`);
+            }
+          }
+
+          for (const item of batch) {
+            const result = batchResults.get(item.index)!;
+            summaries.set(item.index, {
+              titleZh: result.titleZh?.trim() || item.title,
+              summary: result.summary.trim(),
+              reason: result.reason?.trim() || '',
             });
           }
-        }
-      } catch (error) {
-        console.warn(`[digest] Summary batch failed: ${error instanceof Error ? error.message : String(error)}`);
-        for (const item of batch) {
-          summaries.set(item.index, { titleZh: item.title, summary: item.title, reason: '' });
+          return;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          if (attempt === 1) {
+            console.warn(`[digest] Summary batch failed on attempt 1, retrying once: ${message}`);
+            await new Promise((resolve) => setTimeout(resolve, SUMMARY_RETRY_DELAY_MS));
+            continue;
+          }
+
+          failedBatches.push(`indexes ${batch.map((item) => item.index).join(',')}: ${message}`);
+          console.warn(`[digest] Summary batch failed after retry: ${message}`);
         }
       }
     });
-    
+
     await Promise.all(promises);
     console.log(`[digest] Summary progress: ${Math.min(i + MAX_CONCURRENT_GEMINI, batches.length)}/${batches.length} batches`);
   }
-  
+
+  if (failedBatches.length > 0) {
+    throw new Error(
+      `AI summary generation failed for ${failedBatches.length} batch(es). ` +
+      'No digest was written with title-only fallbacks. Check the configured text model and API route. ' +
+      failedBatches.join(' | ')
+    );
+  }
+
   return summaries;
 }
 
@@ -1032,77 +1079,6 @@ async function fetchHuggingFacePapersLatest(): Promise<FeedFetchResult> {
   }
 }
 
-function getWatchKeywords(): string[] {
-  const raw = process.env.DIGEST_WATCH_KEYWORDS?.trim();
-  if (!raw) {
-    return DEFAULT_WATCH_KEYWORDS;
-  }
-
-  const parsed = raw
-    .split(/[,\n|;]/)
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  return parsed.length > 0 ? parsed : DEFAULT_WATCH_KEYWORDS;
-}
-
-function findWatchMatches(articles: Article[], keywords: string[]): WatchMatch[] {
-  const matches: WatchMatch[] = [];
-  const seen = new Set<string>();
-
-  for (const article of articles) {
-    const title = article.title.toLowerCase();
-    const description = article.description.toLowerCase();
-    const source = article.sourceName.toLowerCase();
-
-    for (const keyword of keywords) {
-      const needle = keyword.toLowerCase();
-      const matchedIn: Array<'title' | 'description' | 'source'> = [];
-
-      if (title.includes(needle)) matchedIn.push('title');
-      if (description.includes(needle)) matchedIn.push('description');
-      if (source.includes(needle)) matchedIn.push('source');
-
-      if (matchedIn.length === 0) continue;
-
-      const dedupeKey = `${keyword}::${article.link}`;
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-
-      matches.push({ keyword, article, matchedIn });
-    }
-  }
-
-  matches.sort((a, b) => b.article.pubDate.getTime() - a.article.pubDate.getTime());
-  return matches;
-}
-
-function generateWatchSection(
-  watchKeywords: string[],
-  watchMatches: WatchMatch[],
-  selectedLinks: Set<string>,
-): string {
-  let report = `## 🎯 重点关注关键词\n\n`;
-  report += `当前重点关注：${watchKeywords.map((kw) => `\`${kw}\``).join('、')}\n\n`;
-
-  if (watchMatches.length === 0) {
-    report += `最近时间范围内未命中这些关键词\n\n`;
-    return report;
-  }
-
-  report += `本次命中 ${watchMatches.length} 条：\n\n`;
-
-  for (const match of watchMatches.slice(0, 8)) {
-    const inTop = selectedLinks.has(match.article.link) ? '已进入 Top 15' : '未进入 Top 15';
-    const matchedInText = match.matchedIn.join('/');
-    report += `- [${match.article.title}](${match.article.link})\n`;
-    report += `  来源：${match.article.sourceName} · ${humanizeTime(match.article.pubDate)} · 命中：${match.keyword}（${matchedInText}） · ${inTop}\n`;
-  }
-
-  report += `\n`;
-  return report;
-}
-
 function generateKeywordBarChart(articles: ScoredArticle[]): string {
   const kwCount = new Map<string, number>();
   for (const a of articles) {
@@ -1216,15 +1192,12 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   filteredArticles: number;
   hours: number;
   lang: string;
-}, watch: {
-  keywords: string[];
-  matches: WatchMatch[];
 }): string {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
   const karpathyFeeds = Math.min(92, stats.totalFeeds);
   const supplementalFeeds = Math.max(stats.totalFeeds - 92, 0);
-  
+
   let report = `# 📰 AI 博客每日精选 — ${dateStr}\n\n`;
   report += `> 本期从 ${stats.totalFeeds} 个信息源中完成聚合筛选（Karpathy 推荐 ${karpathyFeeds} 个 + spsz0831 补充 ${supplementalFeeds} 个），AI 精选 Top ${articles.length}\n\n`;
 
@@ -1235,13 +1208,6 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
     report += `---\n\n`;
   }
 
-  report += generateWatchSection(
-    watch.keywords,
-    watch.matches,
-    new Set(articles.map((article) => article.link)),
-  );
-  report += `---\n\n`;
-
   // ── Top 3 Deep Showcase ──
   if (articles.length >= 3) {
     report += `## 🏆 今日必读\n\n`;
@@ -1249,7 +1215,7 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
       const a = articles[i];
       const medal = ['🥇', '🥈', '🥉'][i];
       const catMeta = CATEGORY_META[a.category];
-      
+
       report += `${medal} **${a.titleZh || a.title}**\n\n`;
       report += `[${a.title}](${a.link}) — ${a.sourceName} · ${humanizeTime(a.pubDate)} · ${catMeta.emoji} ${catMeta.label}\n\n`;
       report += `> ${a.summary}\n\n`;
@@ -1356,6 +1322,9 @@ Environment:
   OPENAI_API_BASE  Optional OpenAI-compatible base URL (default: https://api.openai.com/v1)
   OPENAI_MODEL     Optional OpenAI-compatible model (default: deepseek-chat for DeepSeek base, else gpt-4o-mini)
   OPENAI_WIRE_API  Optional protocol override: chat | responses
+  ANTHROPIC_AUTH_TOKEN Optional Anthropic-compatible token, mapped to the same OpenAI-compatible transport
+  ANTHROPIC_BASE_URL   Optional Anthropic-compatible base URL, used when OPENAI_API_BASE is absent
+  ANTHROPIC_MODEL      Optional Anthropic-compatible model, used when OPENAI_MODEL is absent
 
 Examples:
   bun scripts/digest.ts --hours 24 --top-n 10 --lang zh
@@ -1364,17 +1333,35 @@ Examples:
   process.exit(0);
 }
 
+async function runAiPreflight(aiClient: AIClient): Promise<void> {
+  const timeoutMs = 30_000;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      aiClient.call('日报连接探针：只回复“连接成功”。'),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`preflight timed out after ${timeoutMs / 1000}s`)), timeoutMs);
+      }),
+    ]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`AI preflight failed: ${message}`);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   if (args.includes('--help') || args.includes('-h')) printUsage();
-  
+
   let hours = 48;
   let topN = 15;
   let lang: 'zh' | 'en' = 'zh';
   let waytoAgiLimit = 0;
   let outputPath = '';
   let healthLogPath = '';
-  
+
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if (arg === '--hours' && args[i + 1]) {
@@ -1391,8 +1378,11 @@ async function main(): Promise<void> {
       healthLogPath = args[++i]!;
     }
   }
-  
+
   const {
+    provider,
+    codexCliModel,
+    codexCliReasoningEffort,
     geminiApiKey,
     geminiModel,
     openaiApiKey,
@@ -1401,13 +1391,17 @@ async function main(): Promise<void> {
     openaiWireApi,
   } = loadAiEnv();
 
-  if (!geminiApiKey && !openaiApiKey) {
-    console.error('[digest] Error: Missing API key. Set GEMINI_API_KEY and/or OPENAI_API_KEY.');
+  const useCodexCli = provider?.trim().toLowerCase() === 'codex-cli';
+  if (!useCodexCli && !geminiApiKey && !openaiApiKey) {
+    console.error('[digest] Error: Missing API key. Set GEMINI_API_KEY and/or OPENAI_API_KEY and/or ANTHROPIC_AUTH_TOKEN.');
     console.error('[digest] Gemini key: https://aistudio.google.com/apikey');
     process.exit(1);
   }
 
   const aiClient = createAIClient({
+    provider,
+    codexCliModel,
+    codexCliReasoningEffort,
     geminiApiKey,
     geminiModel,
     openaiApiKey,
@@ -1415,12 +1409,16 @@ async function main(): Promise<void> {
     openaiModel,
     openaiWireApi,
   });
-  
+
+  console.log('[digest] Preflight: testing the configured text model...');
+  await runAiPreflight(aiClient);
+  console.log('[digest] Preflight: text model is responding.');
+
     if (!outputPath) {
       const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
       outputPath = `./reports/output/ai-daily-digest-${dateStr}.md`;
     }
-  
+
   console.log(`[digest] === AI杨侦探工作流 ===`);
   console.log(`[digest] Time range: ${hours} hours`);
   console.log(`[digest] Top N: ${topN}`);
@@ -1429,21 +1427,23 @@ async function main(): Promise<void> {
     console.log(`[digest] WaytoAGI latest limit: ${waytoAgiLimit}`);
   }
   console.log(`[digest] Output: ${outputPath}`);
-  console.log(`[digest] AI provider: ${geminiApiKey ? 'Gemini (primary)' : 'OpenAI-compatible (primary)'}`);
+  console.log(`[digest] AI provider: ${useCodexCli ? 'Codex CLI' : (geminiApiKey ? 'Gemini (primary)' : 'OpenAI-compatible (primary)')}`);
+  if (useCodexCli) {
+    console.log(`[digest] Codex CLI model: ${codexCliModel?.trim() || 'Codex CLI default'}`);
+    console.log(`[digest] Codex CLI reasoning effort: ${codexCliReasoningEffort?.trim() || 'low'}`);
+  }
   if (geminiApiKey) {
     const resolvedGeminiModel = geminiModel?.trim() || GEMINI_DEFAULT_MODEL;
     console.log(`[digest] Gemini model: ${resolvedGeminiModel}`);
   }
-  if (openaiApiKey) {
+  if (openaiApiKey && !useCodexCli) {
     const resolvedBase = (openaiApiBase?.trim() || OPENAI_DEFAULT_API_BASE).replace(/\/+$/, '');
     const resolvedModel = openaiModel?.trim() || 'auto';
     const resolvedWire = inferDisplayWireApi(resolvedBase, openaiWireApi);
     console.log(`[digest] Fallback: ${resolvedBase} (model=${resolvedModel}, wire=${resolvedWire})`);
   }
-  const watchKeywords = getWatchKeywords();
-  console.log(`[digest] Watch keywords: ${watchKeywords.join(', ')}`);
   console.log('');
-  
+
   console.log(`[digest] Step 1/5: Fetching ${RSS_FEEDS.length} RSS feeds...`);
   const fetchResult = await fetchAllFeeds(RSS_FEEDS);
   let allArticles = fetchResult.articles;
@@ -1469,37 +1469,27 @@ async function main(): Promise<void> {
     }
     allArticles = allArticles.concat(waytoAgiResult.articles);
   }
-  
+
   if (allArticles.length === 0) {
     console.error('[digest] Error: No articles fetched from any feed. Check network connection.');
     process.exit(1);
   }
-  
+
   console.log(`[digest] Step 2/5: Filtering by time range (${hours} hours)...`);
   const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
   const recentArticles = allArticles.filter(a => a.pubDate.getTime() > cutoffTime.getTime());
-  
+
   console.log(`[digest] Found ${recentArticles.length} articles within last ${hours} hours`);
 
-  const watchMatches = findWatchMatches(recentArticles, watchKeywords);
-  if (watchMatches.length > 0) {
-    console.log(`[digest] Watch hits: ${watchMatches.length}`);
-    for (const match of watchMatches.slice(0, 5)) {
-      console.log(`  - [${match.keyword}] ${match.article.title}`);
-    }
-  } else {
-    console.log(`[digest] Watch hits: 0`);
-  }
-  
   if (recentArticles.length === 0) {
     console.error(`[digest] Error: No articles found within the last ${hours} hours.`);
     console.error(`[digest] Try increasing --hours (e.g., --hours 168 for one week)`);
     process.exit(1);
   }
-  
+
   console.log(`[digest] Step 3/5: AI scoring ${recentArticles.length} articles...`);
   const scores = await scoreArticlesWithAI(recentArticles, aiClient);
-  
+
   const scoredArticles = recentArticles.map((article, index) => {
     const score = scores.get(index) || { relevance: 5, quality: 5, timeliness: 5, category: 'other' as CategoryId, keywords: [] };
     return {
@@ -1508,18 +1498,21 @@ async function main(): Promise<void> {
       breakdown: score,
     };
   });
-  
+
   scoredArticles.sort((a, b) => b.totalScore - a.totalScore);
   const topArticles = scoredArticles.slice(0, topN);
-  
+
   console.log(`[digest] Top ${topN} articles selected (score range: ${topArticles[topArticles.length - 1]?.totalScore || 0} - ${topArticles[0]?.totalScore || 0})`);
-  
+
   console.log(`[digest] Step 4/5: Generating AI summaries...`);
   const indexedTopArticles = topArticles.map((a, i) => ({ ...a, index: i }));
-  const summaries = await summarizeArticles(indexedTopArticles, aiClient, lang);
-  
+  const summaries = await summarizeArticles(indexedTopArticles, aiClient, lang, useCodexCli ? 5 : GEMINI_BATCH_SIZE);
+
   const finalArticles: ScoredArticle[] = topArticles.map((a, i) => {
-    const sm = summaries.get(i) || { titleZh: a.title, summary: a.description.slice(0, 200), reason: '' };
+    const sm = summaries.get(i);
+    if (!sm) {
+      throw new Error(`Missing AI summary for selected article index ${i}: ${a.title}`);
+    }
     return {
       title: a.title,
       link: a.link,
@@ -1540,12 +1533,12 @@ async function main(): Promise<void> {
       reason: sm.reason,
     };
   });
-  
+
   console.log(`[digest] Step 5/5: Generating today's highlights...`);
   const highlights = await generateHighlights(finalArticles, aiClient, lang);
-  
+
   const successfulSources = new Set(allArticles.map(a => a.sourceName));
-  
+
   const report = generateDigestReport(finalArticles, highlights, {
     totalFeeds: RSS_FEEDS.length + 1 + (waytoAgiLimit > 0 ? 1 : 0),
     successFeeds: successfulSources.size,
@@ -1553,11 +1546,8 @@ async function main(): Promise<void> {
     filteredArticles: recentArticles.length,
     hours,
     lang,
-  }, {
-    keywords: watchKeywords,
-    matches: watchMatches,
   });
-  
+
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, report);
 
@@ -1580,28 +1570,18 @@ async function main(): Promise<void> {
     lang,
     outputPath,
     stats: healthSummary,
-    watchKeywords,
-    watchMatches: watchMatches.map((match) => ({
-      keyword: match.keyword,
-      title: match.article.title,
-      link: match.article.link,
-      sourceName: match.article.sourceName,
-      pubDate: match.article.pubDate.toISOString(),
-      matchedIn: match.matchedIn,
-      inTopN: finalArticles.some((article) => article.link === match.article.link),
-    })),
     entries: fetchResult.healthEntries,
   };
 
   await mkdir(dirname(healthLogPath), { recursive: true });
   await writeFile(healthLogPath, JSON.stringify(healthLog, null, 2));
-  
+
   console.log('');
   console.log(`[digest] ✅ Done!`);
   console.log(`[digest] 📁 Report: ${outputPath}`);
   console.log(`[digest] 🧪 Health log: ${healthLogPath}`);
   console.log(`[digest] 📊 Stats: ${successfulSources.size} sources → ${allArticles.length} articles → ${recentArticles.length} recent → ${finalArticles.length} selected`);
-  
+
   if (finalArticles.length > 0) {
     console.log('');
     console.log(`[digest] 🏆 Top 3 Preview:`);
@@ -1612,14 +1592,7 @@ async function main(): Promise<void> {
     }
   }
 
-  if (watchMatches.length > 0) {
-    console.log('');
-    console.log(`[digest] 🎯 Watch keyword alert:`);
-    for (const match of watchMatches.slice(0, 5)) {
-      const inTopN = finalArticles.some((article) => article.link === match.article.link) ? 'IN_TOP_N' : 'NOT_IN_TOP_N';
-      console.log(`  - ${match.keyword} | ${inTopN} | ${match.article.title}`);
-    }
-  }
+
 }
 
 await main().catch((err) => {

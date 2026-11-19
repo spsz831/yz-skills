@@ -6,7 +6,7 @@
 
 当前引擎内置 **151 个 RSS 源**：其中 92 个参考 Hacker News Popularity Contest 2025 / Andrej Karpathy 推荐，另有 59 个补充源。默认还会采集 Hugging Face Papers；WaytoAGI 博客为可选源，默认关闭。
 
-完整的 RSS 地址清单是引擎中的 `RSS_FEEDS` 配置：[查看脚本中的来源清单](scripts/digest.ts#L29)。源站可用性会变化；每次运行会在健康日志中记录采集结果。
+完整的 RSS 地址清单独立维护在 [`scripts/source-catalog.ts`](scripts/source-catalog.ts)。源站可用性会变化；每次运行会在健康日志中记录采集结果。
 
 ## 目录
 
@@ -17,6 +17,7 @@ ai-daily-digest/
 ├── .env.example                     # 模型配置示例，不含密钥
 └── scripts/
     ├── digest.ts                    # 信息采集、评分、摘要和日报生成
+    ├── source-catalog.ts            # RSS 信息源清单
     ├── lib/ai-client.ts             # Gemini、OpenAI 兼容接口与 Codex CLI 客户端
     ├── analyze-ai-digest-health.ps1 # 汇总近期采集健康日志
     └── analyze-ai-digest-health.cmd # Windows 启动入口
@@ -46,6 +47,9 @@ npx -y bun scripts/digest.ts
 # 生成最近 24 小时日报
 npx -y bun scripts/digest.ts --hours 24 --top-n 15 --lang zh
 
+# 按上海时区显示报告日期和默认文件名
+npx -y bun scripts/digest.ts --hours 24 --top-n 15 --lang zh --timezone Asia/Shanghai
+
 # 可选：额外抓取 5 篇 WaytoAGI 博客
 npx -y bun scripts/digest.ts --hours 24 --top-n 15 --lang zh --waytoagi-limit 5
 ```
@@ -56,8 +60,12 @@ npx -y bun scripts/digest.ts --hours 24 --top-n 15 --lang zh --waytoagi-limit 5
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/analyze-ai-digest-health.ps1 -Last 7
 ```
 
+日报按 RSS 标题和简介生成导读，不抓取文章全文；报告会明确标注这一点。引擎会先按规范化链接和同日标题合并重复条目，要求模型为每篇候选内容返回完整评分；评分缺项会重试，仍不完整则停止生成。Hugging Face Papers 页面日期无法识别时会记为采集错误，不会将未标日期的论文当作最新内容。
+
+`--timezone` 使用 IANA 时区名，默认使用运行机器的系统时区。时间窗口仍按最近 N 小时计算；时区只影响报告日期、生成时间和默认文件名。
+
 ## 能力边界
 
-这是一个带固定来源清单的采集与内容整理工具，不保证互联网上所有 AI 新闻都被覆盖。RSS 站点可能失效或延迟更新；生成的评分与摘要应结合原文核验。它不会自动定时运行，也不会自动写成公众号文章或发布到任何平台。
+这是一个带固定来源清单的采集与内容整理工具，不保证互联网上所有 AI 新闻都被覆盖。RSS 站点可能失效或延迟更新；评分与导读基于 RSS 摘要信息，重要数据和结论仍应结合原文核验。它不会自动定时运行，也不会自动写成长篇文章或发布到任何平台。
 
 Skill 的调用规则见 [`SKILL.md`](SKILL.md)。

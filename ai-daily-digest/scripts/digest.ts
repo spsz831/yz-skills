@@ -1,6 +1,7 @@
 import { writeFile, mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import process from 'node:process';
+import { RSS_FEEDS } from './source-catalog';
 import {
   GEMINI_DEFAULT_MODEL,
   OPENAI_DEFAULT_API_BASE,
@@ -25,160 +26,7 @@ const WAYTOAGI_SOURCE_URL = 'https://www.waytoagi.com/zh/blog';
 const HUGGINGFACE_PAPERS_SOURCE_NAME = 'huggingface.co/papers';
 const HUGGINGFACE_PAPERS_SOURCE_URL = 'https://huggingface.co/papers';
 
-// 151 RSS feeds: 92 based on HN Popularity Contest / Karpathy recommendations, plus 59 supplemental feeds.
-const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }> = [
-  { name: "simonwillison.net", xmlUrl: "https://simonwillison.net/atom/everything/", htmlUrl: "https://simonwillison.net" },
-  { name: "jeffgeerling.com", xmlUrl: "https://www.jeffgeerling.com/blog.xml", htmlUrl: "https://jeffgeerling.com" },
-  { name: "seangoedecke.com", xmlUrl: "https://www.seangoedecke.com/rss.xml", htmlUrl: "https://seangoedecke.com" },
-  { name: "krebsonsecurity.com", xmlUrl: "https://krebsonsecurity.com/feed/", htmlUrl: "https://krebsonsecurity.com" },
-  { name: "daringfireball.net", xmlUrl: "https://daringfireball.net/feeds/main", htmlUrl: "https://daringfireball.net" },
-  { name: "ericmigi.com", xmlUrl: "https://ericmigi.com/rss.xml", htmlUrl: "https://ericmigi.com" },
-  { name: "antirez.com", xmlUrl: "http://antirez.com/rss", htmlUrl: "http://antirez.com" },
-  { name: "idiallo.com", xmlUrl: "https://idiallo.com/feed.rss", htmlUrl: "https://idiallo.com" },
-  { name: "maurycyz.com", xmlUrl: "https://maurycyz.com/index.xml", htmlUrl: "https://maurycyz.com" },
-  { name: "pluralistic.net", xmlUrl: "https://pluralistic.net/feed/", htmlUrl: "https://pluralistic.net" },
-  { name: "shkspr.mobi", xmlUrl: "https://shkspr.mobi/blog/feed/", htmlUrl: "https://shkspr.mobi" },
-  { name: "lcamtuf.substack.com", xmlUrl: "https://lcamtuf.substack.com/feed", htmlUrl: "https://lcamtuf.substack.com" },
-  { name: "mitchellh.com", xmlUrl: "https://mitchellh.com/feed.xml", htmlUrl: "https://mitchellh.com" },
-  { name: "dynomight.net", xmlUrl: "https://dynomight.net/feed.xml", htmlUrl: "https://dynomight.net" },
-  { name: "utcc.utoronto.ca/~cks", xmlUrl: "https://utcc.utoronto.ca/~cks/space/blog/?atom", htmlUrl: "https://utcc.utoronto.ca/~cks" },
-  { name: "xeiaso.net", xmlUrl: "https://xeiaso.net/blog.rss", htmlUrl: "https://xeiaso.net" },
-  { name: "devblogs.microsoft.com/oldnewthing", xmlUrl: "https://devblogs.microsoft.com/oldnewthing/feed", htmlUrl: "https://devblogs.microsoft.com/oldnewthing" },
-  { name: "righto.com", xmlUrl: "https://www.righto.com/feeds/posts/default", htmlUrl: "https://righto.com" },
-  { name: "lucumr.pocoo.org", xmlUrl: "https://lucumr.pocoo.org/feed.atom", htmlUrl: "https://lucumr.pocoo.org" },
-  { name: "skyfall.dev", xmlUrl: "https://skyfall.dev/rss.xml", htmlUrl: "https://skyfall.dev" },
-  { name: "garymarcus.substack.com", xmlUrl: "https://garymarcus.substack.com/feed", htmlUrl: "https://garymarcus.substack.com" },
-  { name: "rachelbythebay.com", xmlUrl: "https://rachelbythebay.com/w/atom.xml", htmlUrl: "https://rachelbythebay.com" },
-  { name: "overreacted.io", xmlUrl: "https://overreacted.io/rss.xml", htmlUrl: "https://overreacted.io" },
-  { name: "timsh.org", xmlUrl: "https://timsh.org/rss/", htmlUrl: "https://timsh.org" },
-  { name: "johndcook.com", xmlUrl: "https://www.johndcook.com/blog/feed/", htmlUrl: "https://johndcook.com" },
-  { name: "gilesthomas.com", xmlUrl: "https://gilesthomas.com/feed/rss.xml", htmlUrl: "https://gilesthomas.com" },
-  { name: "matklad.github.io", xmlUrl: "https://matklad.github.io/feed.xml", htmlUrl: "https://matklad.github.io" },
-  { name: "derekthompson.org", xmlUrl: "https://www.theatlantic.com/feed/author/derek-thompson/", htmlUrl: "https://derekthompson.org" },
-  { name: "evanhahn.com", xmlUrl: "https://evanhahn.com/feed.xml", htmlUrl: "https://evanhahn.com" },
-  { name: "terriblesoftware.org", xmlUrl: "https://terriblesoftware.org/feed/", htmlUrl: "https://terriblesoftware.org" },
-  { name: "rakhim.exotext.com", xmlUrl: "https://rakhim.exotext.com/rss.xml", htmlUrl: "https://rakhim.exotext.com" },
-  { name: "joanwestenberg.com", xmlUrl: "https://joanwestenberg.com/rss", htmlUrl: "https://joanwestenberg.com" },
-  { name: "xania.org", xmlUrl: "https://xania.org/feed", htmlUrl: "https://xania.org" },
-  { name: "micahflee.com", xmlUrl: "https://micahflee.com/feed/", htmlUrl: "https://micahflee.com" },
-  { name: "nesbitt.io", xmlUrl: "https://nesbitt.io/feed.xml", htmlUrl: "https://nesbitt.io" },
-  { name: "construction-physics.com", xmlUrl: "https://www.construction-physics.com/feed", htmlUrl: "https://construction-physics.com" },
-  { name: "tedium.co", xmlUrl: "https://feed.tedium.co/", htmlUrl: "https://tedium.co" },
-  { name: "susam.net", xmlUrl: "https://susam.net/feed.xml", htmlUrl: "https://susam.net" },
-  { name: "entropicthoughts.com", xmlUrl: "https://entropicthoughts.com/feed.xml", htmlUrl: "https://entropicthoughts.com" },
-  { name: "buttondown.com/hillelwayne", xmlUrl: "https://buttondown.com/hillelwayne/rss", htmlUrl: "https://buttondown.com/hillelwayne" },
-  { name: "dwarkesh.com", xmlUrl: "https://www.dwarkeshpatel.com/feed", htmlUrl: "https://dwarkesh.com" },
-  { name: "danielmiessler.com", xmlUrl: "https://danielmiessler.com/feed", htmlUrl: "https://danielmiessler.com" },
-  { name: "grugq.github.io", xmlUrl: "https://grugq.github.io/feed.xml", htmlUrl: "https://grugq.github.io" },
-  { name: "lucian36.substack.com", xmlUrl: "https://lucian36.substack.com/feed", htmlUrl: "https://lucian36.substack.com" },
-  { name: "scotthelme.co.uk", xmlUrl: "https://scotthelme.co.uk/rss", htmlUrl: "https://scotthelme.co.uk" },
-  { name: "aiforswes.com", xmlUrl: "https://www.aiforswes.com/feed", htmlUrl: "https://www.aiforswes.com" },
-  { name: "aiguide.substack.com", xmlUrl: "https://aiguide.substack.com/feed", htmlUrl: "https://aiguide.substack.com" },
-  { name: "aitidbits.ai", xmlUrl: "https://www.aitidbits.ai/feed", htmlUrl: "https://www.aitidbits.ai" },
-  { name: "answer.ai", xmlUrl: "https://www.answer.ai/index.xml", htmlUrl: "https://www.answer.ai" },
-  { name: "anyscale.com", xmlUrl: "https://www.anyscale.com/rss.xml", htmlUrl: "https://www.anyscale.com" },
-  { name: "bensbites.com", xmlUrl: "https://www.bensbites.com/feed", htmlUrl: "https://www.bensbites.com" },
-  { name: "blog.vllm.ai", xmlUrl: "https://vllm.ai/blog/atom.xml", htmlUrl: "https://vllm.ai/blog" },
-  { name: "cameronrwolfe.substack.com", xmlUrl: "https://cameronrwolfe.substack.com/feed", htmlUrl: "https://cameronrwolfe.substack.com" },
-  { name: "codingwithintelligence.substack.com", xmlUrl: "https://codingwithintelligence.com/feed", htmlUrl: "https://codingwithintelligence.com" },
-  { name: "fchollet.substack.com", xmlUrl: "https://fchollet.substack.com/feed", htmlUrl: "https://fchollet.substack.com" },
-  { name: "frontierai.substack.com", xmlUrl: "https://frontierai.substack.com/feed", htmlUrl: "https://frontierai.substack.com" },
-  { name: "gonzoml.substack.com", xmlUrl: "https://gonzoml.substack.com/feed", htmlUrl: "https://gonzoml.substack.com" },
-  { name: "huggingface.co", xmlUrl: "https://huggingface.co/blog/feed.xml", htmlUrl: "https://huggingface.co/blog" },
-  { name: "iaee.substack.com", xmlUrl: "https://iaee.substack.com/feed", htmlUrl: "https://iaee.substack.com" },
-  { name: "importai.substack.com", xmlUrl: "https://importai.substack.com/feed", htmlUrl: "https://importai.substack.com" },
-  { name: "intersectingai.substack.com", xmlUrl: "https://intersectingai.substack.com/feed", htmlUrl: "https://intersectingai.substack.com" },
-  { name: "intuitiveai.substack.com", xmlUrl: "https://intuitiveai.substack.com/feed", htmlUrl: "https://intuitiveai.substack.com" },
-  { name: "kaitchup.substack.com", xmlUrl: "https://kaitchup.substack.com/feed", htmlUrl: "https://kaitchup.substack.com" },
-  { name: "lastweekin.ai", xmlUrl: "https://lastweekin.ai/feed", htmlUrl: "https://lastweekin.ai" },
-  { name: "latent.space", xmlUrl: "https://www.latent.space/feed", htmlUrl: "https://www.latent.space" },
-  { name: "llmwatch.com", xmlUrl: "https://www.llmwatch.com/feed", htmlUrl: "https://www.llmwatch.com" },
-  { name: "machinelearning.substack.com", xmlUrl: "https://machinelearning.substack.com/feed", htmlUrl: "https://machinelearning.substack.com" },
-  { name: "magazine.sebastianraschka.com", xmlUrl: "https://magazine.sebastianraschka.com/feed", htmlUrl: "https://magazine.sebastianraschka.com" },
-  { name: "newsletter.ruder.io", xmlUrl: "https://newsletter.ruder.io/feed", htmlUrl: "https://newsletter.ruder.io" },
-  { name: "newsletter.victordibia.com", xmlUrl: "https://newsletter.victordibia.com/feed", htmlUrl: "https://newsletter.victordibia.com" },
-  { name: "normaltech.ai", xmlUrl: "https://www.normaltech.ai/feed", htmlUrl: "https://www.normaltech.ai" },
-  { name: "wise.readwise.io", xmlUrl: "https://wise.readwise.io/feed", htmlUrl: "https://wise.readwise.io" },
-  { name: "semafor.com", xmlUrl: "https://www.semafor.com/rss.xml", htmlUrl: "https://www.semafor.com" },
-  { name: "thegradient.pub", xmlUrl: "https://thegradient.pub/rss", htmlUrl: "https://thegradient.pub" },
-  { name: "trelis.substack.com", xmlUrl: "https://trelis.substack.com/feed", htmlUrl: "https://trelis.substack.com" },
-  { name: "verityharding.substack.com", xmlUrl: "https://verityharding.substack.com/feed", htmlUrl: "https://verityharding.substack.com" },
-  { name: "InfoQ 中文", xmlUrl: "https://www.infoq.cn/feed", htmlUrl: "https://www.infoq.cn" },
-  { name: "开源中国-资讯", xmlUrl: "https://www.oschina.net/news/rss", htmlUrl: "https://www.oschina.net/news" },
-  { name: "爱范儿", xmlUrl: "https://www.ifanr.com/feed", htmlUrl: "https://www.ifanr.com" },
-  { name: "量子位", xmlUrl: "https://www.qbitai.com/feed", htmlUrl: "https://www.qbitai.com" },
-  { name: "36氪", xmlUrl: "https://36kr.com/feed", htmlUrl: "https://36kr.com" },
-  { name: "IT之家", xmlUrl: "https://www.ithome.com/rss", htmlUrl: "https://www.ithome.com" },
-  { name: "阮一峰网络日志", xmlUrl: "https://www.ruanyifeng.com/blog/atom.xml", htmlUrl: "https://www.ruanyifeng.com/blog" },
-  { name: "少数派", xmlUrl: "https://sspai.com/feed", htmlUrl: "https://sspai.com" },
-  { name: "V2EX-创意", xmlUrl: "https://www.v2ex.com/feed/tab/creative.xml", htmlUrl: "https://www.v2ex.com/?tab=creative" },
-  { name: "V2EX-程序员", xmlUrl: "https://www.v2ex.com/feed/tab/qna.xml", htmlUrl: "https://www.v2ex.com/?tab=qna" },
-  { name: "Solidot", xmlUrl: "https://www.solidot.org/index.rss", htmlUrl: "https://www.solidot.org" },
-  { name: "AIGC开放社区", xmlUrl: "https://www.aigcopen.com/feed", htmlUrl: "https://www.aigcopen.com" },
-  { name: "HyperAI", xmlUrl: "https://hyper.ai/cn/feed.xml", htmlUrl: "https://hyper.ai/cn/news" },
-  { name: "雷峰网", xmlUrl: "https://www.leiphone.com/feed", htmlUrl: "https://www.leiphone.com" },
-  { name: "腾讯研究院", xmlUrl: "https://www.tisi.org/feed", htmlUrl: "https://www.tisi.org" },
-  { name: "科学空间", xmlUrl: "https://spaces.ac.cn/feed", htmlUrl: "https://spaces.ac.cn" },
-  { name: "博客园首页精选", xmlUrl: "https://www.cnblogs.com/rss", htmlUrl: "https://www.cnblogs.com" },
-  { name: "掘金RSS", xmlUrl: "https://juejin.cn/rss", htmlUrl: "https://juejin.cn" },
-  { name: "开源中国问答", xmlUrl: "https://www.oschina.net/question/rss", htmlUrl: "https://www.oschina.net/question" },
-  { name: "SegmentFault 问答", xmlUrl: "https://segmentfault.com/feeds/questions", htmlUrl: "https://segmentfault.com/questions" },
-  { name: "CNode 社区", xmlUrl: "https://cnodejs.org/rss", htmlUrl: "https://cnodejs.org" },
-  { name: "Appinn 小众软件", xmlUrl: "https://www.appinn.com/feed", htmlUrl: "https://www.appinn.com" },
-  { name: "异次元软件世界", xmlUrl: "https://www.iplaysoft.com/feed", htmlUrl: "https://www.iplaysoft.com" },
-  { name: "月光博客", xmlUrl: "https://www.williamlong.info/rss.xml", htmlUrl: "https://www.williamlong.info" },
-  { name: "borretti.me", xmlUrl: "https://borretti.me/feed.xml", htmlUrl: "https://borretti.me" },
-  { name: "wheresyoured.at", xmlUrl: "https://www.wheresyoured.at/rss/", htmlUrl: "https://wheresyoured.at" },
-  { name: "jayd.ml", xmlUrl: "https://jayd.ml/feed.xml", htmlUrl: "https://jayd.ml" },
-  { name: "minimaxir.com", xmlUrl: "https://minimaxir.com/index.xml", htmlUrl: "https://minimaxir.com" },
-  { name: "geohot.github.io", xmlUrl: "https://geohot.github.io/blog/feed.xml", htmlUrl: "https://geohot.github.io" },
-  { name: "paulgraham.com", xmlUrl: "http://www.aaronsw.com/2002/feeds/pgessays.rss", htmlUrl: "https://paulgraham.com" },
-  { name: "filfre.net", xmlUrl: "https://www.filfre.net/feed/", htmlUrl: "https://filfre.net" },
-  { name: "blog.jim-nielsen.com", xmlUrl: "https://blog.jim-nielsen.com/feed.xml", htmlUrl: "https://blog.jim-nielsen.com" },
-  { name: "dfarq.homeip.net", xmlUrl: "https://dfarq.homeip.net/feed/", htmlUrl: "https://dfarq.homeip.net" },
-  { name: "jyn.dev", xmlUrl: "https://jyn.dev/atom.xml", htmlUrl: "https://jyn.dev" },
-  { name: "geoffreylitt.com", xmlUrl: "https://www.geoffreylitt.com/feed.xml", htmlUrl: "https://geoffreylitt.com" },
-  { name: "downtowndougbrown.com", xmlUrl: "https://www.downtowndougbrown.com/feed/", htmlUrl: "https://downtowndougbrown.com" },
-  { name: "brutecat.com", xmlUrl: "https://brutecat.com/rss.xml", htmlUrl: "https://brutecat.com" },
-  { name: "eli.thegreenplace.net", xmlUrl: "https://eli.thegreenplace.net/feeds/all.atom.xml", htmlUrl: "https://eli.thegreenplace.net" },
-  { name: "abortretry.fail", xmlUrl: "https://www.abortretry.fail/feed", htmlUrl: "https://abortretry.fail" },
-  { name: "fabiensanglard.net", xmlUrl: "https://fabiensanglard.net/rss.xml", htmlUrl: "https://fabiensanglard.net" },
-  { name: "oldvcr.blogspot.com", xmlUrl: "https://oldvcr.blogspot.com/feeds/posts/default", htmlUrl: "https://oldvcr.blogspot.com" },
-  { name: "bogdanthegeek.github.io", xmlUrl: "https://bogdanthegeek.github.io/blog/index.xml", htmlUrl: "https://bogdanthegeek.github.io" },
-  { name: "hugotunius.se", xmlUrl: "https://hugotunius.se/feed.xml", htmlUrl: "https://hugotunius.se" },
-  { name: "gwern.net", xmlUrl: "https://gwern.substack.com/feed", htmlUrl: "https://gwern.net" },
-  { name: "berthub.eu", xmlUrl: "https://berthub.eu/articles/index.xml", htmlUrl: "https://berthub.eu" },
-  { name: "chadnauseam.com", xmlUrl: "https://chadnauseam.com/rss.xml", htmlUrl: "https://chadnauseam.com" },
-  { name: "simone.org", xmlUrl: "https://simone.org/feed/", htmlUrl: "https://simone.org" },
-  { name: "it-notes.dragas.net", xmlUrl: "https://it-notes.dragas.net/feed/", htmlUrl: "https://it-notes.dragas.net" },
-  { name: "beej.us", xmlUrl: "https://beej.us/blog/rss.xml", htmlUrl: "https://beej.us" },
-  { name: "hey.paris", xmlUrl: "https://hey.paris/index.xml", htmlUrl: "https://hey.paris" },
-  { name: "danielwirtz.com", xmlUrl: "https://danielwirtz.com/rss.xml", htmlUrl: "https://danielwirtz.com" },
-  { name: "matduggan.com", xmlUrl: "https://matduggan.com/rss/", htmlUrl: "https://matduggan.com" },
-  { name: "refactoringenglish.com", xmlUrl: "https://refactoringenglish.com/index.xml", htmlUrl: "https://refactoringenglish.com" },
-  { name: "worksonmymachine.substack.com", xmlUrl: "https://worksonmymachine.substack.com/feed", htmlUrl: "https://worksonmymachine.substack.com" },
-  { name: "philiplaine.com", xmlUrl: "https://philiplaine.com/index.xml", htmlUrl: "https://philiplaine.com" },
-  { name: "steveblank.com", xmlUrl: "https://steveblank.com/feed/", htmlUrl: "https://steveblank.com" },
-  { name: "bernsteinbear.com", xmlUrl: "https://bernsteinbear.com/feed.xml", htmlUrl: "https://bernsteinbear.com" },
-  { name: "danieldelaney.net", xmlUrl: "https://danieldelaney.net/feed", htmlUrl: "https://danieldelaney.net" },
-  { name: "troyhunt.com", xmlUrl: "https://www.troyhunt.com/rss/", htmlUrl: "https://troyhunt.com" },
-  { name: "herman.bearblog.dev", xmlUrl: "https://herman.bearblog.dev/feed/", htmlUrl: "https://herman.bearblog.dev" },
-  { name: "tomrenner.com", xmlUrl: "https://tomrenner.com/index.xml", htmlUrl: "https://tomrenner.com" },
-  { name: "blog.pixelmelt.dev", xmlUrl: "https://blog.pixelmelt.dev/rss/", htmlUrl: "https://blog.pixelmelt.dev" },
-  { name: "martinalderson.com", xmlUrl: "https://martinalderson.com/feed.xml", htmlUrl: "https://martinalderson.com" },
-  { name: "danielchasehooper.com", xmlUrl: "https://danielchasehooper.com/feed.xml", htmlUrl: "https://danielchasehooper.com" },
-  { name: "chiark.greenend.org.uk/~sgtatham", xmlUrl: "https://www.chiark.greenend.org.uk/~sgtatham/quasiblog/feed.xml", htmlUrl: "https://chiark.greenend.org.uk/~sgtatham" },
-  { name: "grantslatton.com", xmlUrl: "https://grantslatton.com/rss.xml", htmlUrl: "https://grantslatton.com" },
-  { name: "experimental-history.com", xmlUrl: "https://www.experimental-history.com/feed", htmlUrl: "https://experimental-history.com" },
-  { name: "anildash.com", xmlUrl: "https://anildash.com/feed.xml", htmlUrl: "https://anildash.com" },
-  { name: "aresluna.org", xmlUrl: "https://aresluna.org/main.rss", htmlUrl: "https://aresluna.org" },
-  { name: "michael.stapelberg.ch", xmlUrl: "https://michael.stapelberg.ch/feed.xml", htmlUrl: "https://michael.stapelberg.ch" },
-  { name: "miguelgrinberg.com", xmlUrl: "https://blog.miguelgrinberg.com/feed", htmlUrl: "https://miguelgrinberg.com" },
-  { name: "keygen.sh", xmlUrl: "https://keygen.sh/blog/feed.xml", htmlUrl: "https://keygen.sh" },
-  { name: "mjg59.dreamwidth.org", xmlUrl: "https://mjg59.dreamwidth.org/data/rss", htmlUrl: "https://mjg59.dreamwidth.org" },
-  { name: "computer.rip", xmlUrl: "https://computer.rip/rss.xml", htmlUrl: "https://computer.rip" },
-  { name: "tedunangst.com", xmlUrl: "https://www.tedunangst.com/flak/rss", htmlUrl: "https://tedunangst.com" },
-];
+
 
 // ============================================================================
 // Types
@@ -490,6 +338,65 @@ async function fetchAllFeeds(feeds: typeof RSS_FEEDS): Promise<{ articles: Artic
   return { articles: allArticles, healthEntries };
 }
 
+function normalizeArticleUrl(link: string): string {
+  try {
+    const url = new URL(link);
+    url.hash = '';
+    url.pathname = url.pathname.replace(/\/+$/, '') || '/';
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^(utm_.+|fbclid|gclid|mc_cid|mc_eid|ref)$/i.test(key)) {
+        url.searchParams.delete(key);
+      }
+    }
+    url.searchParams.sort();
+    return url.toString();
+  } catch {
+    return link.trim().replace(/#.*$/, '');
+  }
+}
+
+function normalizeArticleTitle(title: string): string {
+  return title.normalize('NFKC').toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function deduplicateArticles(articles: Article[]): Article[] {
+  const parent = articles.map((_, index) => index);
+  const find = (index: number): number => {
+    if (parent[index] !== index) parent[index] = find(parent[index]!);
+    return parent[index]!;
+  };
+  const union = (a: number, b: number): void => {
+    const rootA = find(a);
+    const rootB = find(b);
+    if (rootA !== rootB) parent[rootB] = rootA;
+  };
+  const articleIndexByUrl = new Map<string, number>();
+  const articleIndexByTitleAndDay = new Map<string, number>();
+
+  for (const [index, article] of articles.entries()) {
+    const normalizedUrl = normalizeArticleUrl(article.link);
+    const normalizedTitle = normalizeArticleTitle(article.title);
+    const day = Number.isNaN(article.pubDate.getTime()) ? '' : article.pubDate.toISOString().slice(0, 10);
+    const titleAndDay = normalizedTitle ? `${normalizedTitle}:${day}` : '';
+    const urlMatch = normalizedUrl ? articleIndexByUrl.get(normalizedUrl) : undefined;
+    const titleMatch = titleAndDay ? articleIndexByTitleAndDay.get(titleAndDay) : undefined;
+    if (urlMatch !== undefined) union(index, urlMatch);
+    if (titleMatch !== undefined) union(index, titleMatch);
+    if (normalizedUrl) articleIndexByUrl.set(normalizedUrl, index);
+    if (titleAndDay) articleIndexByTitleAndDay.set(titleAndDay, index);
+  }
+
+  const unique = new Map<number, Article>();
+  for (const [index, article] of articles.entries()) {
+    const root = find(index);
+    const existing = unique.get(root);
+    if (!existing || article.description.length > existing.description.length) {
+      unique.set(root, article);
+    }
+  }
+  return [...unique.values()];
+}
+
 async function fetchWaytoAgiLatest(limit: number): Promise<FeedFetchResult> {
   if (limit <= 0) {
     return {
@@ -703,11 +610,12 @@ function buildScoringPrompt(articles: Array<{ index: number; title: string; desc
 - 4-6: 对特定技术领域有价值
 - 1-3: 与技术行业关联不大
 
-### 2. 质量 (quality) - 文章本身的深度和写作质量
-- 10: 深度分析，原创洞见，引用丰富
-- 7-9: 有深度，观点独到
-- 4-6: 信息准确，表达清晰
-- 1-3: 浅尝辄止或纯转述
+### 2. 信息丰富度 (quality) - 当前 RSS 标题和简介提供的信息量
+- 10: 标题与简介提供充分背景、具体细节和清晰结论
+- 7-9: 有具体内容，但部分背景或结论不完整
+- 4-6: 只有少量可用信息
+- 1-3: 几乎只有标题、宣传语或模糊描述
+- 只能评估本次提供的 RSS 信息，不得假装读过原文或推断全文质量
 
 ### 3. 时效性 (timeliness) - 当前是否值得阅读
 - 10: 正在发生的重大事件/刚发布的重要工具
@@ -776,18 +684,39 @@ async function scoreArticlesWithAI(
         const responseText = await aiClient.call(prompt);
         const parsed = parseJsonResponse<GeminiScoringResult>(responseText);
 
-        if (parsed.results && Array.isArray(parsed.results)) {
-          for (const result of parsed.results) {
-            const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
-            const cat = (validCategories.has(result.category) ? result.category : 'other') as CategoryId;
-            allScores.set(result.index, {
-              relevance: clamp(result.relevance),
-              quality: clamp(result.quality),
-              timeliness: clamp(result.timeliness),
-              category: cat,
-              keywords: Array.isArray(result.keywords) ? result.keywords.slice(0, 4) : [],
-            });
+        if (!parsed.results || !Array.isArray(parsed.results)) {
+          throw new Error('scoring response did not contain a results array');
+        }
+
+        const expectedIndexes = new Set(batch.map((item) => item.index));
+        const returnedIndexes = new Set<number>();
+        for (const result of parsed.results) {
+          if (!Number.isInteger(result.index) || !expectedIndexes.has(result.index)) {
+            throw new Error(`scoring response returned unexpected index: ${result.index}`);
           }
+          if (returnedIndexes.has(result.index)) {
+            throw new Error(`scoring response returned duplicate index: ${result.index}`);
+          }
+
+          const scores = [result.relevance, result.quality, result.timeliness];
+          if (scores.some((score) => !Number.isFinite(score) || score < 1 || score > 10)) {
+            throw new Error(`scoring response returned an invalid score for index ${result.index}`);
+          }
+
+          returnedIndexes.add(result.index);
+          const cat = (validCategories.has(result.category) ? result.category : 'other') as CategoryId;
+          allScores.set(result.index, {
+            relevance: Math.round(result.relevance),
+            quality: Math.round(result.quality),
+            timeliness: Math.round(result.timeliness),
+            category: cat,
+            keywords: Array.isArray(result.keywords) ? result.keywords.slice(0, 4) : [],
+          });
+        }
+
+        const missingIndexes = [...expectedIndexes].filter((index) => !returnedIndexes.has(index));
+        if (missingIndexes.length > 0) {
+          throw new Error(`scoring response omitted indexes: ${missingIndexes.join(', ')}`);
         }
         return;
       } catch (error) {
@@ -839,18 +768,17 @@ function buildSummaryPrompt(
     ? '请用中文撰写摘要和推荐理由。如果原文是英文，请翻译为中文。标题翻译也用中文。'
     : 'Write summaries, reasons, and title translations in English.';
 
-  return `你是一个技术内容摘要专家。请为以下文章完成三件事：
+  return `你是一个技术内容导读编辑。输入仅包括 RSS 标题、RSS 简介和原文链接；你没有读取原文全文。只能依据给出的 RSS 信息撰写，不得根据链接、常识或标题猜测未提供的技术细节、数据和结论。
+
+请为以下条目完成三件事：
 
 1. **中文标题** (titleZh): 将英文标题翻译成自然的中文。如果原标题已经是中文则保持不变。
-2. **摘要** (summary): 4-6 句话的结构化摘要，让读者不点进原文也能了解核心内容。包含：
-   - 文章讨论的核心问题或主题（1 句）
-   - 关键论点、技术方案或发现（2-3 句）
-   - 结论或作者的核心观点（1 句）
+2. **导读** (summary): 根据实际提供的信息写 2-4 句话。简介足够时概括主题和明确出现的要点；简介不足或为空时，明确说明目前只有标题或简短 RSS 信息，建议点开原文，不要补造内容。
 3. **推荐理由** (reason): 1 句话说明"为什么值得读"，区别于摘要（摘要说"是什么"，推荐理由说"为什么"）。
 
 ${langInstruction}
 
-摘要要求：
+导读要求：
 - 直接说重点，不要用"本文讨论了..."、"这篇文章介绍了..."这种开头
 - 包含具体的技术名词、数据、方案名称或观点
 - 保留关键数字和指标（如性能提升百分比、用户数、版本号等）
@@ -912,7 +840,23 @@ async function summarizeArticles(
             throw new Error('summary response did not contain a results array');
           }
 
-          const batchResults = new Map(parsed.results.map((result) => [result.index, result]));
+          const expectedIndexes = new Set(batch.map((item) => item.index));
+          const batchResults = new Map<number, GeminiSummaryResult['results'][number]>();
+          for (const result of parsed.results) {
+            if (!Number.isInteger(result.index) || !expectedIndexes.has(result.index)) {
+              throw new Error(`summary response returned unexpected index: ${result.index}`);
+            }
+            if (batchResults.has(result.index)) {
+              throw new Error(`summary response returned duplicate index: ${result.index}`);
+            }
+            batchResults.set(result.index, result);
+          }
+
+          const missingIndexes = [...expectedIndexes].filter((index) => !batchResults.has(index));
+          if (missingIndexes.length > 0) {
+            throw new Error(`summary response omitted indexes: ${missingIndexes.join(', ')}`);
+          }
+
           for (const item of batch) {
             const result = batchResults.get(item.index);
             const summary = result?.summary?.trim() || '';
@@ -974,10 +918,11 @@ async function generateHighlights(
 
   const langNote = lang === 'zh' ? '用中文回答。' : 'Write in English.';
 
-  const prompt = `根据以下今日精选技术文章列表，写一段 3-5 句话的"今日看点"总结。
+  const prompt = `根据以下本期精选技术文章列表，写一段 3-5 句话的"本期看点"总结。
 要求：
 - 提炼出今天技术圈的 2-3 个主要趋势或话题
 - 不要逐篇列举，要做宏观归纳
+- 只能依据 RSS 导读归纳；不要将少量条目夸大成行业共识，也不要推断因果关系
 - 风格简洁有力，像新闻导语
 ${langNote}
 
@@ -999,7 +944,7 @@ ${articleList}
 // Visualization Helpers
 // ============================================================================
 
-function humanizeTime(pubDate: Date): string {
+function humanizeTime(pubDate: Date, timeZone: string): string {
   const diffMs = Date.now() - pubDate.getTime();
   const diffMins = Math.floor(diffMs / 60_000);
   const diffHours = Math.floor(diffMs / 3_600_000);
@@ -1008,7 +953,32 @@ function humanizeTime(pubDate: Date): string {
   if (diffMins < 60) return `${diffMins} 分钟前`;
   if (diffHours < 24) return `${diffHours} 小时前`;
   if (diffDays < 7) return `${diffDays} 天前`;
-  return pubDate.toISOString().slice(0, 10);
+  return getDateTimeInTimeZone(pubDate, timeZone).date;
+}
+
+function getDateTimeInTimeZone(date: Date, timeZone: string): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return {
+    date: `${values.year}-${values.month}-${values.day}`,
+    time: `${values.hour}:${values.minute}`,
+  };
+}
+
+function validateTimeZone(timeZone: string): void {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone }).format();
+  } catch {
+    throw new Error(`Invalid IANA time zone: ${timeZone}`);
+  }
 }
 
 async function fetchHuggingFacePapersLatest(): Promise<FeedFetchResult> {
@@ -1026,7 +996,13 @@ async function fetchHuggingFacePapersLatest(): Promise<FeedFetchResult> {
 
     const html = await response.text();
     const dateMatch = html.match(/&quot;dateString&quot;:&quot;(\d{4}-\d{2}-\d{2})&quot;/i);
-    const pageDate = dateMatch ? new Date(`${dateMatch[1]}T00:00:00.000Z`) : new Date();
+    if (!dateMatch) {
+      throw new Error('Could not determine the listing date; refusing to mark undated papers as current');
+    }
+    const pageDate = new Date(`${dateMatch[1]}T00:00:00.000Z`);
+    if (Number.isNaN(pageDate.getTime())) {
+      throw new Error(`Hugging Face Papers returned an invalid listing date: ${dateMatch[1]}`);
+    }
 
     const articlePattern = /<h3[^>]*>\s*<a href="(\/papers\/[^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/h3>/gi;
     const seen = new Set<string>();
@@ -1190,20 +1166,25 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   successFeeds: number;
   totalArticles: number;
   filteredArticles: number;
+  duplicateArticlesRemoved: number;
   hours: number;
   lang: string;
+  timeZone: string;
 }): string {
   const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
-  const karpathyFeeds = Math.min(92, stats.totalFeeds);
+  const generatedAt = getDateTimeInTimeZone(now, stats.timeZone);
+  const dateStr = generatedAt.date;
+  const karpathyFeeds = Math.min(92, RSS_FEEDS.length);
   const supplementalFeeds = Math.max(RSS_FEEDS.length - 92, 0);
 
   let report = `# 📰 AI 每日精选 — ${dateStr}\n\n`;
   report += `> 本期默认聚合 ${RSS_FEEDS.length} 个 RSS 源和 Hugging Face Papers（其中 ${karpathyFeeds} 个参考 HN Popularity Contest / Karpathy 推荐，${supplementalFeeds} 个为补充源），AI 精选 Top ${articles.length}\n\n`;
+  report += `> 阅读说明：以下是基于 RSS 标题和简介生成的导读，不代表已核验原文全文；关键数据和结论请打开原文确认。\n\n`;
+  report += `> 时间窗口内抓取 ${stats.filteredArticles} 篇，合并重复 ${stats.duplicateArticlesRemoved} 篇后参与排序；报告时间按 ${stats.timeZone} 时区显示。\n\n`;
 
   // ── Today's Highlights ──
   if (highlights) {
-    report += `## 📝 今日看点\n\n`;
+    report += `## 📝 本期看点\n\n`;
     report += `${highlights}\n\n`;
     report += `---\n\n`;
   }
@@ -1217,7 +1198,7 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
       const catMeta = CATEGORY_META[a.category];
 
       report += `${medal} **${a.titleZh || a.title}**\n\n`;
-      report += `[${a.title}](${a.link}) — ${a.sourceName} · ${humanizeTime(a.pubDate)} · ${catMeta.emoji} ${catMeta.label}\n\n`;
+      report += `[${a.title}](${a.link}) — ${a.sourceName} · ${humanizeTime(a.pubDate, stats.timeZone)} · ${catMeta.emoji} ${catMeta.label}\n\n`;
       report += `> ${a.summary}\n\n`;
       if (a.reason) {
         report += `💡 **为什么值得读**: ${a.reason}\n\n`;
@@ -1279,7 +1260,7 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
       const scoreTotal = a.scoreBreakdown.relevance + a.scoreBreakdown.quality + a.scoreBreakdown.timeliness;
 
       report += `### ${globalIndex}. ${a.titleZh || a.title}\n\n`;
-      report += `[${a.title}](${a.link}) — **${a.sourceName}** · ${humanizeTime(a.pubDate)} · ⭐ ${scoreTotal}/30\n\n`;
+      report += `[${a.title}](${a.link}) — **${a.sourceName}** · ${humanizeTime(a.pubDate, stats.timeZone)} · ⭐ ${scoreTotal}/30\n\n`;
       report += `> ${a.summary}\n\n`;
       if (a.keywords.length > 0) {
         report += `🏷️ ${a.keywords.join(', ')}\n\n`;
@@ -1289,7 +1270,7 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   }
 
   // ── Footer ──
-  report += `*生成于 ${dateStr} ${now.toISOString().split('T')[1]?.slice(0, 5) || ''} | 扫描 ${stats.successFeeds} 源 → 获取 ${stats.totalArticles} 篇 → 精选 ${articles.length} 篇*\n`;
+  report += `*生成于 ${dateStr} ${generatedAt.time} (${stats.timeZone}) | 扫描 ${stats.successFeeds} 源 → 获取 ${stats.totalArticles} 篇 → 精选 ${articles.length} 篇*\n`;
   report += `*RSS 源说明：92 个参考 [Hacker News Popularity Contest 2025](https://refactoringenglish.com/tools/hn-popularity/) / [Andrej Karpathy](https://x.com/karpathy) 推荐，另有 ${supplementalFeeds} 个补充源；Hugging Face Papers 单独采集*\n`;
   report += `*由 AI Daily Digest 生成*\n`;
 
@@ -1310,6 +1291,7 @@ Options:
   --hours <n>     Time range in hours (default: 48)
   --top-n <n>     Number of top articles to include (default: 15)
   --lang <lang>   Summary language: zh or en (default: zh)
+  --timezone <id> IANA time zone for report dates (default: system time zone)
   --waytoagi-limit <n> Optional: include latest N posts from waytoagi blog (default: 0, disabled)
   --output <path> Output file path (default: ./reports/output/ai-daily-digest-YYYYMMDD.md)
   --health-log <path> Optional health log JSON path (default: ./reports/health/run-YYYYMMDD-HHmm.json)
@@ -1359,25 +1341,44 @@ async function main(): Promise<void> {
   let topN = 15;
   let lang: 'zh' | 'en' = 'zh';
   let waytoAgiLimit = 0;
+  let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   let outputPath = '';
   let healthLogPath = '';
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]!;
     if (arg === '--hours' && args[i + 1]) {
-      hours = parseInt(args[++i]!, 10);
+      hours = Number(args[++i]);
     } else if (arg === '--top-n' && args[i + 1]) {
-      topN = parseInt(args[++i]!, 10);
+      topN = Number(args[++i]);
     } else if (arg === '--lang' && args[i + 1]) {
       lang = args[++i] as 'zh' | 'en';
+    } else if (arg === '--timezone' && args[i + 1]) {
+      timeZone = args[++i]!;
     } else if (arg === '--waytoagi-limit' && args[i + 1]) {
-      waytoAgiLimit = parseInt(args[++i]!, 10);
+      waytoAgiLimit = Number(args[++i]);
     } else if (arg === '--output' && args[i + 1]) {
       outputPath = args[++i]!;
     } else if (arg === '--health-log' && args[i + 1]) {
       healthLogPath = args[++i]!;
+    } else {
+      throw new Error(`Unknown option or missing value: ${arg}`);
     }
   }
+
+  if (!Number.isInteger(hours) || hours <= 0) {
+    throw new Error('--hours must be a positive integer');
+  }
+  if (!Number.isInteger(topN) || topN <= 0) {
+    throw new Error('--top-n must be a positive integer');
+  }
+  if (!Number.isInteger(waytoAgiLimit) || waytoAgiLimit < 0) {
+    throw new Error('--waytoagi-limit must be a non-negative integer');
+  }
+  if (lang !== 'zh' && lang !== 'en') {
+    throw new Error('--lang must be zh or en');
+  }
+  validateTimeZone(timeZone);
 
   const {
     provider,
@@ -1414,13 +1415,14 @@ async function main(): Promise<void> {
   await runAiPreflight(aiClient);
   console.log('[digest] Preflight: text model is responding.');
 
-    if (!outputPath) {
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      outputPath = `./reports/output/ai-daily-digest-${dateStr}.md`;
-    }
+  if (!outputPath) {
+    const dateStr = getDateTimeInTimeZone(new Date(), timeZone).date.replace(/-/g, '');
+    outputPath = `./reports/output/ai-daily-digest-${dateStr}.md`;
+  }
 
   console.log(`[digest] === AI Daily Digest ===`);
   console.log(`[digest] Time range: ${hours} hours`);
+  console.log(`[digest] Time zone: ${timeZone}`);
   console.log(`[digest] Top N: ${topN}`);
   console.log(`[digest] Language: ${lang}`);
   if (waytoAgiLimit > 0) {
@@ -1477,9 +1479,11 @@ async function main(): Promise<void> {
 
   console.log(`[digest] Step 2/5: Filtering by time range (${hours} hours)...`);
   const cutoffTime = new Date(Date.now() - hours * 60 * 60 * 1000);
-  const recentArticles = allArticles.filter(a => a.pubDate.getTime() > cutoffTime.getTime());
+  const recentSourceArticles = allArticles.filter(a => a.pubDate.getTime() > cutoffTime.getTime());
+  const recentArticles = deduplicateArticles(recentSourceArticles);
+  const duplicateArticlesRemoved = recentSourceArticles.length - recentArticles.length;
 
-  console.log(`[digest] Found ${recentArticles.length} articles within last ${hours} hours`);
+  console.log(`[digest] Found ${recentSourceArticles.length} articles in the time window; removed ${duplicateArticlesRemoved} duplicates; ${recentArticles.length} remain`);
 
   if (recentArticles.length === 0) {
     console.error(`[digest] Error: No articles found within the last ${hours} hours.`);
@@ -1491,7 +1495,10 @@ async function main(): Promise<void> {
   const scores = await scoreArticlesWithAI(recentArticles, aiClient);
 
   const scoredArticles = recentArticles.map((article, index) => {
-    const score = scores.get(index) || { relevance: 5, quality: 5, timeliness: 5, category: 'other' as CategoryId, keywords: [] };
+    const score = scores.get(index);
+    if (!score) {
+      throw new Error(`Missing AI score for article index ${index}; refusing to rank an unscored story`);
+    }
     return {
       ...article,
       totalScore: score.relevance + score.quality + score.timeliness,
@@ -1534,26 +1541,29 @@ async function main(): Promise<void> {
     };
   });
 
-  console.log(`[digest] Step 5/5: Generating today's highlights...`);
+  console.log(`[digest] Step 5/5: Generating digest highlights...`);
   const highlights = await generateHighlights(finalArticles, aiClient, lang);
 
-  const successfulSources = new Set(allArticles.map(a => a.sourceName));
+  const successfulFeedCount = fetchResult.healthEntries.filter((entry) => entry.status === 'ok').length;
 
   const report = generateDigestReport(finalArticles, highlights, {
     totalFeeds: RSS_FEEDS.length + 1 + (waytoAgiLimit > 0 ? 1 : 0),
-    successFeeds: successfulSources.size,
+    successFeeds: successfulFeedCount,
     totalArticles: allArticles.length,
-    filteredArticles: recentArticles.length,
+    filteredArticles: recentSourceArticles.length,
+    duplicateArticlesRemoved,
     hours,
     lang,
+    timeZone,
   });
 
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, report);
 
   if (!healthLogPath) {
-    const ts = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
-      healthLogPath = `./reports/health/run-${ts}.json`;
+    const generatedAt = getDateTimeInTimeZone(new Date(), timeZone);
+    const ts = `${generatedAt.date.replace(/-/g, '')}-${generatedAt.time.replace(':', '')}`;
+    healthLogPath = `./reports/health/run-${ts}.json`;
   }
 
   const healthSummary = {
@@ -1565,6 +1575,7 @@ async function main(): Promise<void> {
 
   const healthLog = {
     generatedAt: new Date().toISOString(),
+    timeZone,
     hours,
     topN,
     lang,
@@ -1580,7 +1591,7 @@ async function main(): Promise<void> {
   console.log(`[digest] ✅ Done!`);
   console.log(`[digest] 📁 Report: ${outputPath}`);
   console.log(`[digest] 🧪 Health log: ${healthLogPath}`);
-  console.log(`[digest] 📊 Stats: ${successfulSources.size} sources → ${allArticles.length} articles → ${recentArticles.length} recent → ${finalArticles.length} selected`);
+  console.log(`[digest] 📊 Stats: ${successfulFeedCount}/${fetchResult.healthEntries.length} feeds ok → ${allArticles.length} articles → ${recentSourceArticles.length} recent → ${duplicateArticlesRemoved} duplicates removed → ${finalArticles.length} selected`);
 
   if (finalArticles.length > 0) {
     console.log('');

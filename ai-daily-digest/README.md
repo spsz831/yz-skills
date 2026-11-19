@@ -1,41 +1,41 @@
-# AI Daily Digest Skill
+# AI 日报 Skill
 
-A standalone, reusable agent skill for researching and writing concise digests of recent AI and technology news.
+一个独立、可复用的智能体 Skill，用于调研近期 AI 与科技动态，并整理成简洁、可靠的新闻日报。
 
-This folder contains the Skill instructions only. It is not an application repository and does not include a bundled news crawler, account-specific feeds, local report archive, or publishing pipeline.
+本目录只包含 Skill 说明，不是应用程序仓库；不附带新闻爬虫、专属信息源、本地报告档案或发布流水线。
 
-## What it does
+## 功能
 
-- Researches recent developments from current, verifiable sources.
-- Checks event dates, publication dates, key figures, and direct source links.
-- Selects significant stories, removes duplicates, and explains why each item matters.
-- Produces or edits a Markdown digest for the time range and audience requested.
+- 从近期、可核实的信息源中查找新闻与行业动态。
+- 核对事件发生时间、文章来源日期、关键数据和原始链接。
+- 筛选重要内容、合并重复报道，并说明每条信息的价值。
+- 按用户指定的时间范围和读者对象，生成或编辑 Markdown 日报。
 
-## Use it when
+## 适用场景
 
-- You need a daily or weekly AI news roundup.
-- You want to turn a source list or research notes into a digest.
-- You need to review an existing digest for freshness, sourcing, selection, and clarity.
+- 编写每日或每周 AI 行业资讯简报。
+- 将给定的信息源或调研笔记整理成日报。
+- 检查现有日报的时效性、来源、选题和表达。
 
-The default for an unspecified “today's AI digest” is the latest 24 hours in the user's local timezone. The user can choose another window, topic, region, audience, length, or format.
+用户没有指定时间范围时，“今天的 AI 日报”默认覆盖用户本地时区最近 24 小时。用户可以另行指定时间范围、主题、地区、读者、篇幅或格式。
 
-## Files
+## 文件结构
 
 ```text
 ai-daily-digest/
-├── SKILL.md   # Agent instructions and source-verification workflow
-├── README.md  # This overview
-└── LICENSE    # MIT License
+├── SKILL.md   # Skill 指令：研究、核实和编写流程
+├── README.md  # 本说明
+└── LICENSE    # MIT 许可证
 ```
 
-The Skill uses web research capabilities available in the agent environment. It does not hard-code a news-source list or model provider. If current browsing is unavailable, it asks for source material rather than presenting stale information as current.
+Skill 使用运行环境提供的联网检索能力，不固定绑定某个信息源列表或模型服务。如果当前无法联网，它会请求用户提供材料，不会把过时信息写成最新动态。
 
-## Scope
+## 使用边界
 
-This Skill provides a reusable research and writing method for AI news digests. It does not bundle an application, crawler, or fixed source catalog.
+本 Skill 提供 AI 新闻日报的通用调研与写作方法，不附带应用程序、爬虫或固定的信息源目录。
 
-## Install
+## 安装
 
-Install this folder in the skills directory supported by your agent, keeping the folder name `ai-daily-digest`. The Skill is available for automatic selection when a request matches its description, or can be invoked explicitly by name.
+将此目录放入所用智能体支持的 Skills 目录，并保留文件夹名 `ai-daily-digest`。当用户请求符合 Skill 的适用范围时，智能体可自动选择它，也可以按名称显式调用。
 
-See [`SKILL.md`](SKILL.md) for the operating instructions.
+具体执行说明见 [`SKILL.md`](SKILL.md)。

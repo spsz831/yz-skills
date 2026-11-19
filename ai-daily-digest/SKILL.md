@@ -1,41 +1,34 @@
 ---
 name: ai-daily-digest
-description: Research and write a timely AI industry news digest from current, verifiable sources. Use for AI news roundups, daily or weekly AI briefings, and digest editing; do not assume a particular private repository, personal brand, or publishing workflow.
+description: Run, configure, or troubleshoot the bundled AI news digest engine. It collects from the included RSS catalog, scores and summarizes recent items, and writes a Markdown report with source-health data. Use for AI daily or weekly digest generation, not for long-form article publishing.
 ---
 
 # AI Daily Digest
 
-Create or revise a concise, useful digest of recent AI and technology developments. Work from current sources or materials supplied by the user. Keep the scope and time window the user requests; if omitted, treat “today's AI digest” as the most recent 24 hours in the user's local timezone.
+Use the bundled digest engine and source catalog to produce or troubleshoot AI news reports. The skill directory is self-contained; do not assume a separate private repository or a fixed local workspace path.
 
-## Gather and verify
+## Generate a report
 
-- Use available web search and page-reading tools for current news. If browsing is unavailable, ask for source material or state that current facts cannot be verified; do not fill gaps from memory.
-- Prefer primary sources for announcements, releases, papers, policy, and company statements. Use reliable reporting to add context or independently verify consequential claims.
-- Check both the publication date and when the event occurred. Exclude stale stories unless a new development makes them relevant to the requested window.
-- Open the source pages before writing. Confirm names, dates, numbers, product availability, and quoted claims. Link directly to sources and distinguish confirmed facts from analysis.
-- Deduplicate stories that different outlets describe as separate updates. Keep a balanced mix of meaningful developments; do not force categories or keywords when the news does not support them.
+Run commands from this skill's directory so the engine can read its local `.env` and use relative output paths:
 
-## Select and write
+```powershell
+npx -y bun scripts/digest.ts --hours 24 --top-n 15 --lang zh
+```
 
-Prioritize developments by significance, novelty, evidence quality, and practical or industry impact. Omit routine funding or product updates when they add little beyond promotion. Explain why each selected item matters without exaggerating its implications.
+Defaults are 48 hours, 15 stories, and Chinese. Follow any requested time window, item count, language, and output paths. The engine requires network access to feeds and a configured model client: Gemini API, OpenAI-compatible API, or authenticated Codex CLI. See `.env.example` and `README.md` for setup.
 
-Unless the user requests another format, produce Markdown with:
+The RSS catalog is the `RSS_FEEDS` array in `scripts/digest.ts`. It currently contains 151 feeds. Hugging Face Papers is fetched separately on each run; WaytoAGI is optional and is enabled only when `--waytoagi-limit` is greater than zero. Do not claim these sources cover all AI news.
 
-1. A dated title and the covered time window.
-2. A short overview of the most important shifts.
-3. Numbered stories, each with a clear headline, concise factual summary, a brief “why it matters” note, and direct source links.
-4. A short closing synthesis only when the stories support one.
+## Verify the result
 
-Keep language direct and readable. Preserve useful technical detail, define unfamiliar terms briefly, and label analysis as analysis. Do not invent a trend, consensus, date, quote, source, or causal link to make the digest feel complete.
+- Confirm the Markdown report exists at the requested path or under `reports/output/`.
+- Confirm the matching health JSON exists under `reports/health/` unless a different path was requested.
+- Report actual feed and article counts from the health log or command output. Identify failed feeds when relevant.
+- If requested, summarize recent health logs with `scripts/analyze-ai-digest-health.ps1`.
+- Distinguish feed collection from editorial verification: scores and summaries are machine-generated; check source pages for consequential claims when the user requests review or verification.
 
-## Adapt to the request
+## Keep the scope to the digest
 
-- For a requested interval, region, topic, audience, item count, or output path, follow it.
-- For a provided draft, spreadsheet, or source list, improve its accuracy, selection, organization, and readability; identify claims that still need verification.
-- If the user asks for only headlines, a brief, or an editorial plan, return that deliverable without expanding it into an article.
-- Do not add a personal byline, account identity, fixed call to action, WeChat formatting, cover design, illustrations, or a separate article-production pipeline unless asked.
-- Do not assume access to any local repository or run repository-specific scripts. Use project-specific instructions only when the user explicitly supplies that project as the task context.
+This skill covers source collection, scoring, summaries, Markdown report generation, and source-health analysis. Stop after the requested digest operation. Do not create article work items, long-form posts, illustrations, covers, SVG layouts, or publication packages as an assumed next step.
 
-## Final check
-
-Before returning the digest, confirm that every current-events claim has a source, dates match the requested window, duplicate stories are removed, links are direct, and the summary does not claim more than its sources support. If a key detail remains uncertain, say so beside that item.
+If the engine cannot reach the feeds or model service, report the actual error and affected stage. Never claim a report or health analysis exists until you have checked the output file.

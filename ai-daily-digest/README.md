@@ -1,41 +1,63 @@
 # AI 日报 Skill
 
-一个独立、可复用的智能体 Skill，用于调研近期 AI 与科技动态，并整理成简洁、可靠的新闻日报。
+这是一份可独立使用的 AI 日报 Skill，包含从原有日报引擎中抽取出来的**信息源、新闻采集、AI 评分与摘要、报告生成和健康日志分析**。它不包含公众号文章写作、选题审批、插图、封面或发布流程。
 
-本目录只包含 Skill 说明，不是应用程序仓库；不附带新闻爬虫、专属信息源、本地报告档案或发布流水线。
+## 信息源
 
-## 功能
+当前引擎内置 **151 个 RSS 源**：其中 92 个参考 Hacker News Popularity Contest 2025 / Andrej Karpathy 推荐，另有 59 个补充源。默认还会采集 Hugging Face Papers；WaytoAGI 博客为可选源，默认关闭。
 
-- 从近期、可核实的信息源中查找新闻与行业动态。
-- 核对事件发生时间、文章来源日期、关键数据和原始链接。
-- 筛选重要内容、合并重复报道，并说明每条信息的价值。
-- 按用户指定的时间范围和读者对象，生成或编辑 Markdown 日报。
+完整的 RSS 地址清单是引擎中的 `RSS_FEEDS` 配置：[查看脚本中的来源清单](scripts/digest.ts#L29)。源站可用性会变化；每次运行会在健康日志中记录采集结果。
 
-## 适用场景
-
-- 编写每日或每周 AI 行业资讯简报。
-- 将给定的信息源或调研笔记整理成日报。
-- 检查现有日报的时效性、来源、选题和表达。
-
-用户没有指定时间范围时，“今天的 AI 日报”默认覆盖用户本地时区最近 24 小时。用户可以另行指定时间范围、主题、地区、读者、篇幅或格式。
-
-## 文件结构
+## 目录
 
 ```text
 ai-daily-digest/
-├── SKILL.md   # Skill 指令：研究、核实和编写流程
-├── README.md  # 本说明
-└── LICENSE    # MIT 许可证
+├── SKILL.md                         # Skill 的使用与执行规则
+├── README.md                        # 本说明
+├── .env.example                     # 模型配置示例，不含密钥
+└── scripts/
+    ├── digest.ts                    # 信息采集、评分、摘要和日报生成
+    ├── lib/ai-client.ts             # Gemini、OpenAI 兼容接口与 Codex CLI 客户端
+    ├── analyze-ai-digest-health.ps1 # 汇总近期采集健康日志
+    └── analyze-ai-digest-health.cmd # Windows 启动入口
 ```
 
-Skill 使用运行环境提供的联网检索能力，不固定绑定某个信息源列表或模型服务。如果当前无法联网，它会请求用户提供材料，不会把过时信息写成最新动态。
+## 运行环境
 
-## 使用边界
+- Windows PowerShell 或 PowerShell 7。
+- Node.js / npm（用于 `npx -y bun` 启动 Bun）。
+- 可用的模型调用方式：Gemini API、OpenAI 兼容 API，或已登录的 Codex CLI。
+- 可访问 RSS 源和所选模型服务的网络连接。
 
-本 Skill 提供 AI 新闻日报的通用调研与写作方法，不附带应用程序、爬虫或固定的信息源目录。
+## 配置模型
 
-## 安装
+在此目录复制 `.env.example` 为 `.env`，按所用服务填写配置。至少配置一种认证方式：`GEMINI_API_KEY`、`OPENAI_API_KEY`，或设置 `AI_PROVIDER=codex-cli` 并确保本机 Codex CLI 已登录。
 
-将此目录放入所用智能体支持的 Skills 目录，并保留文件夹名 `ai-daily-digest`。当用户请求符合 Skill 的适用范围时，智能体可自动选择它，也可以按名称显式调用。
+密钥仅保存在本机 `.env` 或进程环境变量中；`.env` 已列入 Git 忽略规则。
 
-具体执行说明见 [`SKILL.md`](SKILL.md)。
+## 生成日报
+
+从此目录运行：
+
+```powershell
+# 默认生成最近 48 小时的中文 Top 15 日报
+npx -y bun scripts/digest.ts
+
+# 生成最近 24 小时日报
+npx -y bun scripts/digest.ts --hours 24 --top-n 15 --lang zh
+
+# 可选：额外抓取 5 篇 WaytoAGI 博客
+npx -y bun scripts/digest.ts --hours 24 --top-n 15 --lang zh --waytoagi-limit 5
+```
+
+默认产物位于 `reports/output/`，对应的采集健康日志位于 `reports/health/`。也可以通过 `--output` 和 `--health-log` 指定文件路径。生成后可汇总最近 7 次运行的源站健康情况：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/analyze-ai-digest-health.ps1 -Last 7
+```
+
+## 能力边界
+
+这是一个带固定来源清单的采集与内容整理工具，不保证互联网上所有 AI 新闻都被覆盖。RSS 站点可能失效或延迟更新；生成的评分与摘要应结合原文核验。它不会自动定时运行，也不会自动写成公众号文章或发布到任何平台。
+
+Skill 的调用规则见 [`SKILL.md`](SKILL.md)。

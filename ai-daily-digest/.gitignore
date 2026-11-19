@@ -1,9 +1,0 @@
-generated_imgs/
-node_modules/
-.playwright-mcp/
-.codex/
-*.log
-reports/
-.env
-.env.local
-.env.*.local

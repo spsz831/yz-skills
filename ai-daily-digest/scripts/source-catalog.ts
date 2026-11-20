@@ -1,4 +1,4 @@
-// 151 configured RSS sources. Keep feed endpoints in this file as the catalog's source of truth.
+// 143 configured RSS sources. Keep feed endpoints in this file as the catalog's source of truth.
 export const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }> = [
   { name: "simonwillison.net", xmlUrl: "https://simonwillison.net/atom/everything/", htmlUrl: "https://simonwillison.net" },
   { name: "jeffgeerling.com", xmlUrl: "https://www.jeffgeerling.com/blog.xml", htmlUrl: "https://jeffgeerling.com" },
@@ -14,14 +14,11 @@ export const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }>
   { name: "lcamtuf.substack.com", xmlUrl: "https://lcamtuf.substack.com/feed", htmlUrl: "https://lcamtuf.substack.com" },
   { name: "mitchellh.com", xmlUrl: "https://mitchellh.com/feed.xml", htmlUrl: "https://mitchellh.com" },
   { name: "dynomight.net", xmlUrl: "https://dynomight.net/feed.xml", htmlUrl: "https://dynomight.net" },
-  { name: "utcc.utoronto.ca/~cks", xmlUrl: "https://utcc.utoronto.ca/~cks/space/blog/?atom", htmlUrl: "https://utcc.utoronto.ca/~cks" },
   { name: "xeiaso.net", xmlUrl: "https://xeiaso.net/blog.rss", htmlUrl: "https://xeiaso.net" },
   { name: "devblogs.microsoft.com/oldnewthing", xmlUrl: "https://devblogs.microsoft.com/oldnewthing/feed", htmlUrl: "https://devblogs.microsoft.com/oldnewthing" },
   { name: "righto.com", xmlUrl: "https://www.righto.com/feeds/posts/default", htmlUrl: "https://righto.com" },
   { name: "lucumr.pocoo.org", xmlUrl: "https://lucumr.pocoo.org/feed.atom", htmlUrl: "https://lucumr.pocoo.org" },
-  { name: "skyfall.dev", xmlUrl: "https://skyfall.dev/rss.xml", htmlUrl: "https://skyfall.dev" },
   { name: "garymarcus.substack.com", xmlUrl: "https://garymarcus.substack.com/feed", htmlUrl: "https://garymarcus.substack.com" },
-  { name: "rachelbythebay.com", xmlUrl: "https://rachelbythebay.com/w/atom.xml", htmlUrl: "https://rachelbythebay.com" },
   { name: "overreacted.io", xmlUrl: "https://overreacted.io/rss.xml", htmlUrl: "https://overreacted.io" },
   { name: "timsh.org", xmlUrl: "https://timsh.org/rss/", htmlUrl: "https://timsh.org" },
   { name: "johndcook.com", xmlUrl: "https://www.johndcook.com/blog/feed/", htmlUrl: "https://johndcook.com" },
@@ -31,7 +28,6 @@ export const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }>
   { name: "evanhahn.com", xmlUrl: "https://evanhahn.com/feed.xml", htmlUrl: "https://evanhahn.com" },
   { name: "terriblesoftware.org", xmlUrl: "https://terriblesoftware.org/feed/", htmlUrl: "https://terriblesoftware.org" },
   { name: "rakhim.exotext.com", xmlUrl: "https://rakhim.exotext.com/rss.xml", htmlUrl: "https://rakhim.exotext.com" },
-  { name: "joanwestenberg.com", xmlUrl: "https://joanwestenberg.com/rss", htmlUrl: "https://joanwestenberg.com" },
   { name: "xania.org", xmlUrl: "https://xania.org/feed", htmlUrl: "https://xania.org" },
   { name: "micahflee.com", xmlUrl: "https://micahflee.com/feed/", htmlUrl: "https://micahflee.com" },
   { name: "nesbitt.io", xmlUrl: "https://nesbitt.io/feed.xml", htmlUrl: "https://nesbitt.io" },
@@ -42,8 +38,6 @@ export const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }>
   { name: "buttondown.com/hillelwayne", xmlUrl: "https://buttondown.com/hillelwayne/rss", htmlUrl: "https://buttondown.com/hillelwayne" },
   { name: "dwarkesh.com", xmlUrl: "https://www.dwarkeshpatel.com/feed", htmlUrl: "https://dwarkesh.com" },
   { name: "danielmiessler.com", xmlUrl: "https://danielmiessler.com/feed", htmlUrl: "https://danielmiessler.com" },
-  { name: "grugq.github.io", xmlUrl: "https://grugq.github.io/feed.xml", htmlUrl: "https://grugq.github.io" },
-  { name: "lucian36.substack.com", xmlUrl: "https://lucian36.substack.com/feed", htmlUrl: "https://lucian36.substack.com" },
   { name: "scotthelme.co.uk", xmlUrl: "https://scotthelme.co.uk/rss", htmlUrl: "https://scotthelme.co.uk" },
   { name: "aiforswes.com", xmlUrl: "https://www.aiforswes.com/feed", htmlUrl: "https://www.aiforswes.com" },
   { name: "aiguide.substack.com", xmlUrl: "https://aiguide.substack.com/feed", htmlUrl: "https://aiguide.substack.com" },
@@ -87,7 +81,6 @@ export const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }>
   { name: "V2EX-创意", xmlUrl: "https://www.v2ex.com/feed/tab/creative.xml", htmlUrl: "https://www.v2ex.com/?tab=creative" },
   { name: "V2EX-程序员", xmlUrl: "https://www.v2ex.com/feed/tab/qna.xml", htmlUrl: "https://www.v2ex.com/?tab=qna" },
   { name: "Solidot", xmlUrl: "https://www.solidot.org/index.rss", htmlUrl: "https://www.solidot.org" },
-  { name: "AIGC开放社区", xmlUrl: "https://www.aigcopen.com/feed", htmlUrl: "https://www.aigcopen.com" },
   { name: "HyperAI", xmlUrl: "https://hyper.ai/cn/feed.xml", htmlUrl: "https://hyper.ai/cn/news" },
   { name: "雷峰网", xmlUrl: "https://www.leiphone.com/feed", htmlUrl: "https://www.leiphone.com" },
   { name: "腾讯研究院", xmlUrl: "https://www.tisi.org/feed", htmlUrl: "https://www.tisi.org" },
@@ -150,5 +143,4 @@ export const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }>
   { name: "keygen.sh", xmlUrl: "https://keygen.sh/blog/feed.xml", htmlUrl: "https://keygen.sh" },
   { name: "mjg59.dreamwidth.org", xmlUrl: "https://mjg59.dreamwidth.org/data/rss", htmlUrl: "https://mjg59.dreamwidth.org" },
   { name: "computer.rip", xmlUrl: "https://computer.rip/rss.xml", htmlUrl: "https://computer.rip" },
-  { name: "tedunangst.com", xmlUrl: "https://www.tedunangst.com/flak/rss", htmlUrl: "https://tedunangst.com" },
 ];

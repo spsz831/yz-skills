@@ -4,7 +4,7 @@
 
 ## 信息源
 
-当前引擎内置 **151 个 RSS 源**：其中 92 个参考 Hacker News Popularity Contest 2025 / Andrej Karpathy 推荐，另有 59 个补充源。日报只从此 RSS 源目录采集。
+当前引擎内置 **143 个 RSS 源**：其中 92 个参考 Hacker News Popularity Contest 2025 / Andrej Karpathy 推荐，另有 51 个补充源。日报只从此 RSS 源目录采集。
 
 完整的 RSS 地址清单独立维护在 [`scripts/source-catalog.ts`](scripts/source-catalog.ts)。源站可用性会变化；每次运行会在健康日志中记录采集结果。
 

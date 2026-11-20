@@ -1,4 +1,4 @@
-// 143 configured RSS sources. Keep feed endpoints in this file as the catalog's source of truth.
+// 156 configured RSS sources. Keep feed endpoints in this file as the catalog's source of truth.
 export const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }> = [
   { name: "simonwillison.net", xmlUrl: "https://simonwillison.net/atom/everything/", htmlUrl: "https://simonwillison.net" },
   { name: "jeffgeerling.com", xmlUrl: "https://www.jeffgeerling.com/blog.xml", htmlUrl: "https://jeffgeerling.com" },
@@ -40,6 +40,19 @@ export const RSS_FEEDS: Array<{ name: string; xmlUrl: string; htmlUrl: string }>
   { name: "danielmiessler.com", xmlUrl: "https://danielmiessler.com/feed", htmlUrl: "https://danielmiessler.com" },
   { name: "scotthelme.co.uk", xmlUrl: "https://scotthelme.co.uk/rss", htmlUrl: "https://scotthelme.co.uk" },
   { name: "aiforswes.com", xmlUrl: "https://www.aiforswes.com/feed", htmlUrl: "https://www.aiforswes.com" },
+  { name: "OpenAI News", xmlUrl: "https://openai.com/news/rss.xml", htmlUrl: "https://openai.com/news/" },
+  { name: "Google AI Blog", xmlUrl: "https://blog.google/innovation-and-ai/technology/ai/rss/", htmlUrl: "https://blog.google/innovation-and-ai/technology/ai/" },
+  { name: "Google DeepMind", xmlUrl: "https://deepmind.google/blog/rss.xml", htmlUrl: "https://deepmind.google/discover/blog/" },
+  { name: "Mistral AI News", xmlUrl: "https://mistral.ai/news/rss", htmlUrl: "https://mistral.ai/news/" },
+  { name: "MarkTechPost", xmlUrl: "https://www.marktechpost.com/feed/", htmlUrl: "https://www.marktechpost.com/" },
+  { name: "Unite.AI", xmlUrl: "https://www.unite.ai/feed/", htmlUrl: "https://www.unite.ai/" },
+  { name: "TLDR AI", xmlUrl: "https://tldr.tech/api/rss/ai", htmlUrl: "https://tldr.tech/ai" },
+  { name: "The Rundown AI", xmlUrl: "https://www.therundown.ai/feed", htmlUrl: "https://www.therundown.ai/" },
+  { name: "AIHOT 日报", xmlUrl: "https://aihot.news/feed/daily.xml", htmlUrl: "https://aihot.news/" },
+  { name: "AI工具接入教程", xmlUrl: "https://www.aitoolku.cn/feed.xml", htmlUrl: "https://aitoolku.cn/" },
+  { name: "The Algorithmic Bridge", xmlUrl: "https://www.thealgorithmicbridge.com/feed", htmlUrl: "https://www.thealgorithmicbridge.com/" },
+  { name: "AI Supremacy", xmlUrl: "https://www.ai-supremacy.com/feed", htmlUrl: "https://www.ai-supremacy.com/" },
+  { name: "One Useful Thing", xmlUrl: "https://www.oneusefulthing.org/feed", htmlUrl: "https://www.oneusefulthing.org/" },
   { name: "aiguide.substack.com", xmlUrl: "https://aiguide.substack.com/feed", htmlUrl: "https://aiguide.substack.com" },
   { name: "aitidbits.ai", xmlUrl: "https://www.aitidbits.ai/feed", htmlUrl: "https://www.aitidbits.ai" },
   { name: "answer.ai", xmlUrl: "https://www.answer.ai/index.xml", htmlUrl: "https://www.answer.ai" },

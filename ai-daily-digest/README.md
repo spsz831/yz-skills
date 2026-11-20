@@ -4,7 +4,9 @@
 
 ## 信息源
 
-当前引擎内置 **143 个 RSS 源**：其中 92 个参考 Hacker News Popularity Contest 2025 / Andrej Karpathy 推荐，另有 51 个补充源。日报只从此 RSS 源目录采集。
+当前引擎内置 **156 个 RSS 源**：其中 92 个参考 Hacker News Popularity Contest 2025 / Andrej Karpathy 推荐，另有 64 个补充源。日报只从此 RSS 源目录采集。
+
+本次增加了 13 个补充来源：OpenAI、Google AI、Google DeepMind、Mistral、MarkTechPost、Unite.AI、TLDR AI、The Rundown AI、AIHOT、AI工具接入教程、The Algorithmic Bridge、AI Supremacy 和 One Useful Thing。
 
 完整的 RSS 地址清单独立维护在 [`scripts/source-catalog.ts`](scripts/source-catalog.ts)。源站可用性会变化；每次运行会在健康日志中记录采集结果。
 

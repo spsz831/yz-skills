@@ -19,7 +19,7 @@ npx -y bun scripts/digest.ts --hours 24 --top-n 15 --lang zh --timezone Asia/Sha
 
 Defaults are 48 hours, 15 stories, and Chinese. Follow any requested time window, item count, language, time zone, and output paths. Add `--timezone Asia/Shanghai` when report dates should use China time; otherwise the system time zone is used. The engine requires network access to feeds and a configured model client: Gemini API, OpenAI-compatible API, or authenticated Codex CLI. See `.env.example` and `README.md` for setup.
 
-The RSS catalog is `scripts/source-catalog.ts` and currently contains 143 feeds. The digest collects only from this catalog. Do not claim these sources cover all AI news.
+The RSS catalog is `scripts/source-catalog.ts` and currently contains 156 feeds. The digest collects only from this catalog. Do not claim these sources cover all AI news.
 
 ## Verify the result
 

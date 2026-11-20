@@ -20,11 +20,6 @@ const MAX_CONCURRENT_GEMINI = 2;
 const SCORING_RETRY_DELAY_MS = 1_500;
 const SUMMARY_RETRY_DELAY_MS = 1_500;
 const MIN_SUMMARY_LENGTH = 40;
-const WAYTOAGI_BLOG_URL = 'https://www.waytoagi.com/zh/blog';
-const WAYTOAGI_SOURCE_NAME = 'waytoagi-blog';
-const WAYTOAGI_SOURCE_URL = 'https://www.waytoagi.com/zh/blog';
-const HUGGINGFACE_PAPERS_SOURCE_NAME = 'huggingface.co/papers';
-const HUGGINGFACE_PAPERS_SOURCE_URL = 'https://huggingface.co/papers';
 
 
 
@@ -396,102 +391,6 @@ function deduplicateArticles(articles: Article[]): Article[] {
   }
   return [...unique.values()];
 }
-
-async function fetchWaytoAgiLatest(limit: number): Promise<FeedFetchResult> {
-  if (limit <= 0) {
-    return {
-      articles: [],
-      health: {
-        sourceName: WAYTOAGI_SOURCE_NAME,
-        xmlUrl: WAYTOAGI_BLOG_URL,
-        sourceUrl: WAYTOAGI_SOURCE_URL,
-        status: 'empty',
-        articleCount: 0,
-      },
-    };
-  }
-
-  try {
-    const response = await fetch(WAYTOAGI_BLOG_URL, {
-      headers: {
-        'User-Agent': 'AI-Daily-Digest/1.0 (WaytoAGI Reader)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const html = await response.text();
-    const cardPattern = /<a[^>]+href="(\/blog\/news-\d{8})"[^>]*>([\s\S]*?)<\/a>/gi;
-    const seen = new Set<string>();
-    const articles: Article[] = [];
-    let match: RegExpExecArray | null;
-
-    while ((match = cardPattern.exec(html)) !== null) {
-      const href = match[1] ?? '';
-      const cardHtml = match[2] ?? '';
-      if (!href || seen.has(href)) continue;
-      seen.add(href);
-
-      const titleMatch = cardHtml.match(/<div[^>]*class="[^"]*text-lg font-bold[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-      const descMatch = cardHtml.match(/<div[^>]*class="[^"]*line-clamp-2[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
-      const dateMatch = href.match(/news-(\d{4})(\d{2})(\d{2})/i);
-
-      const title = stripHtml(titleMatch?.[1] ?? '').trim() || href.replace('/blog/', '');
-      const description = stripHtml(descMatch?.[1] ?? '').trim().slice(0, 500);
-      const link = `https://www.waytoagi.com/zh${href}`;
-
-      let pubDate = new Date(0);
-      if (dateMatch) {
-        const yyyy = Number(dateMatch[1]);
-        const mm = Number(dateMatch[2]) - 1;
-        const dd = Number(dateMatch[3]);
-        pubDate = new Date(Date.UTC(yyyy, mm, dd, 0, 0, 0));
-      }
-
-      articles.push({
-        title,
-        link,
-        pubDate,
-        description,
-        sourceName: WAYTOAGI_SOURCE_NAME,
-        sourceUrl: WAYTOAGI_SOURCE_URL,
-      });
-    }
-
-    const limited = articles.slice(0, limit);
-    return {
-      articles: limited,
-      health: {
-        sourceName: WAYTOAGI_SOURCE_NAME,
-        xmlUrl: WAYTOAGI_BLOG_URL,
-        sourceUrl: WAYTOAGI_SOURCE_URL,
-        status: limited.length > 0 ? 'ok' : 'empty',
-        articleCount: limited.length,
-      },
-    };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return {
-      articles: [],
-      health: {
-        sourceName: WAYTOAGI_SOURCE_NAME,
-        xmlUrl: WAYTOAGI_BLOG_URL,
-        sourceUrl: WAYTOAGI_SOURCE_URL,
-        status: 'error',
-        articleCount: 0,
-        errorCode: classifyFeedError(msg),
-        errorMessage: msg,
-      },
-    };
-  }
-}
-
-// ============================================================================
-// AI Providers (Gemini + OpenAI-compatible fallback)
-// ============================================================================
 
 function findBalancedJsonSlice(text: string): string | null {
   const startIndexes: number[] = [];
@@ -981,80 +880,6 @@ function validateTimeZone(timeZone: string): void {
   }
 }
 
-async function fetchHuggingFacePapersLatest(): Promise<FeedFetchResult> {
-  try {
-    const response = await fetch(HUGGINGFACE_PAPERS_SOURCE_URL, {
-      headers: {
-        'User-Agent': 'AI-Daily-Digest/1.0 (Hugging Face Papers Reader)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const html = await response.text();
-    const dateMatch = html.match(/&quot;dateString&quot;:&quot;(\d{4}-\d{2}-\d{2})&quot;/i);
-    if (!dateMatch) {
-      throw new Error('Could not determine the listing date; refusing to mark undated papers as current');
-    }
-    const pageDate = new Date(`${dateMatch[1]}T00:00:00.000Z`);
-    if (Number.isNaN(pageDate.getTime())) {
-      throw new Error(`Hugging Face Papers returned an invalid listing date: ${dateMatch[1]}`);
-    }
-
-    const articlePattern = /<h3[^>]*>\s*<a href="(\/papers\/[^"]+)"[^>]*>([\s\S]*?)<\/a>\s*<\/h3>/gi;
-    const seen = new Set<string>();
-    const articles: Article[] = [];
-    let match: RegExpExecArray | null;
-
-    while ((match = articlePattern.exec(html)) !== null) {
-      const href = match[1] ?? '';
-      const rawTitle = match[2] ?? '';
-      if (!href || seen.has(href)) continue;
-      seen.add(href);
-
-      const title = stripHtml(rawTitle).trim();
-      if (!title) continue;
-
-      articles.push({
-        title,
-        link: `https://huggingface.co${href}`,
-        pubDate: pageDate,
-        description: '',
-        sourceName: HUGGINGFACE_PAPERS_SOURCE_NAME,
-        sourceUrl: HUGGINGFACE_PAPERS_SOURCE_URL,
-      });
-    }
-
-    return {
-      articles,
-      health: {
-        sourceName: HUGGINGFACE_PAPERS_SOURCE_NAME,
-        xmlUrl: HUGGINGFACE_PAPERS_SOURCE_URL,
-        sourceUrl: HUGGINGFACE_PAPERS_SOURCE_URL,
-        status: articles.length > 0 ? 'ok' : 'empty',
-        articleCount: articles.length,
-      },
-    };
-  } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
-    return {
-      articles: [],
-      health: {
-        sourceName: HUGGINGFACE_PAPERS_SOURCE_NAME,
-        xmlUrl: HUGGINGFACE_PAPERS_SOURCE_URL,
-        sourceUrl: HUGGINGFACE_PAPERS_SOURCE_URL,
-        status: 'error',
-        articleCount: 0,
-        errorCode: classifyFeedError(msg),
-        errorMessage: msg,
-      },
-    };
-  }
-}
-
 function generateKeywordBarChart(articles: ScoredArticle[]): string {
   const kwCount = new Map<string, number>();
   for (const a of articles) {
@@ -1178,7 +1003,7 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
   const supplementalFeeds = Math.max(RSS_FEEDS.length - 92, 0);
 
   let report = `# 📰 AI 每日精选 — ${dateStr}\n\n`;
-  report += `> 本期默认聚合 ${RSS_FEEDS.length} 个 RSS 源和 Hugging Face Papers（其中 ${karpathyFeeds} 个参考 HN Popularity Contest / Karpathy 推荐，${supplementalFeeds} 个为补充源），AI 精选 Top ${articles.length}\n\n`;
+  report += `> 本期默认聚合 ${RSS_FEEDS.length} 个 RSS 源（其中 ${karpathyFeeds} 个参考 HN Popularity Contest / Karpathy 推荐，${supplementalFeeds} 个为补充源），AI 精选 Top ${articles.length}\n\n`;
   report += `> 阅读说明：以下是基于 RSS 标题和简介生成的导读，不代表已核验原文全文；关键数据和结论请打开原文确认。\n\n`;
   report += `> 时间窗口内抓取 ${stats.filteredArticles} 篇，合并重复 ${stats.duplicateArticlesRemoved} 篇后参与排序；报告时间按 ${stats.timeZone} 时区显示。\n\n`;
 
@@ -1271,7 +1096,7 @@ function generateDigestReport(articles: ScoredArticle[], highlights: string, sta
 
   // ── Footer ──
   report += `*生成于 ${dateStr} ${generatedAt.time} (${stats.timeZone}) | 扫描 ${stats.successFeeds} 源 → 获取 ${stats.totalArticles} 篇 → 精选 ${articles.length} 篇*\n`;
-  report += `*RSS 源说明：92 个参考 [Hacker News Popularity Contest 2025](https://refactoringenglish.com/tools/hn-popularity/) / [Andrej Karpathy](https://x.com/karpathy) 推荐，另有 ${supplementalFeeds} 个补充源；Hugging Face Papers 单独采集*\n`;
+  report += `*RSS 源说明：92 个参考 [Hacker News Popularity Contest 2025](https://refactoringenglish.com/tools/hn-popularity/) / [Andrej Karpathy](https://x.com/karpathy) 推荐，另有 ${supplementalFeeds} 个补充源*\n`;
   report += `*由 AI Daily Digest 生成*\n`;
 
   return report;
@@ -1292,7 +1117,6 @@ Options:
   --top-n <n>     Number of top articles to include (default: 15)
   --lang <lang>   Summary language: zh or en (default: zh)
   --timezone <id> IANA time zone for report dates (default: system time zone)
-  --waytoagi-limit <n> Optional: include latest N posts from waytoagi blog (default: 0, disabled)
   --output <path> Output file path (default: ./reports/output/ai-daily-digest-YYYYMMDD.md)
   --health-log <path> Optional health log JSON path (default: ./reports/health/run-YYYYMMDD-HHmm.json)
   --help          Show this help
@@ -1340,7 +1164,6 @@ async function main(): Promise<void> {
   let hours = 48;
   let topN = 15;
   let lang: 'zh' | 'en' = 'zh';
-  let waytoAgiLimit = 0;
   let timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   let outputPath = '';
   let healthLogPath = '';
@@ -1355,8 +1178,6 @@ async function main(): Promise<void> {
       lang = args[++i] as 'zh' | 'en';
     } else if (arg === '--timezone' && args[i + 1]) {
       timeZone = args[++i]!;
-    } else if (arg === '--waytoagi-limit' && args[i + 1]) {
-      waytoAgiLimit = Number(args[++i]);
     } else if (arg === '--output' && args[i + 1]) {
       outputPath = args[++i]!;
     } else if (arg === '--health-log' && args[i + 1]) {
@@ -1371,9 +1192,6 @@ async function main(): Promise<void> {
   }
   if (!Number.isInteger(topN) || topN <= 0) {
     throw new Error('--top-n must be a positive integer');
-  }
-  if (!Number.isInteger(waytoAgiLimit) || waytoAgiLimit < 0) {
-    throw new Error('--waytoagi-limit must be a non-negative integer');
   }
   if (lang !== 'zh' && lang !== 'en') {
     throw new Error('--lang must be zh or en');
@@ -1425,9 +1243,6 @@ async function main(): Promise<void> {
   console.log(`[digest] Time zone: ${timeZone}`);
   console.log(`[digest] Top N: ${topN}`);
   console.log(`[digest] Language: ${lang}`);
-  if (waytoAgiLimit > 0) {
-    console.log(`[digest] WaytoAGI latest limit: ${waytoAgiLimit}`);
-  }
   console.log(`[digest] Output: ${outputPath}`);
   console.log(`[digest] AI provider: ${useCodexCli ? 'Codex CLI' : (geminiApiKey ? 'Gemini (primary)' : 'OpenAI-compatible (primary)')}`);
   if (useCodexCli) {
@@ -1449,28 +1264,6 @@ async function main(): Promise<void> {
   console.log(`[digest] Step 1/5: Fetching ${RSS_FEEDS.length} RSS feeds...`);
   const fetchResult = await fetchAllFeeds(RSS_FEEDS);
   let allArticles = fetchResult.articles;
-
-  console.log(`[digest] Step 1.2/5: Fetching Hugging Face Papers latest page...`);
-  const huggingFacePapersResult = await fetchHuggingFacePapersLatest();
-  fetchResult.healthEntries.push(huggingFacePapersResult.health);
-  if (huggingFacePapersResult.health.status === 'error') {
-    console.warn(`[digest] ✗ ${HUGGINGFACE_PAPERS_SOURCE_NAME}: ${huggingFacePapersResult.health.errorMessage || 'unknown error'}`);
-  } else {
-    console.log(`[digest] Hugging Face Papers added ${huggingFacePapersResult.articles.length} posts`);
-  }
-  allArticles = allArticles.concat(huggingFacePapersResult.articles);
-
-  if (waytoAgiLimit > 0) {
-    console.log(`[digest] Step 1.5/5: Fetching WaytoAGI latest ${waytoAgiLimit} posts...`);
-    const waytoAgiResult = await fetchWaytoAgiLatest(waytoAgiLimit);
-    fetchResult.healthEntries.push(waytoAgiResult.health);
-    if (waytoAgiResult.health.status === 'error') {
-      console.warn(`[digest] ✗ ${WAYTOAGI_SOURCE_NAME}: ${waytoAgiResult.health.errorMessage || 'unknown error'}`);
-    } else {
-      console.log(`[digest] WaytoAGI added ${waytoAgiResult.articles.length} posts`);
-    }
-    allArticles = allArticles.concat(waytoAgiResult.articles);
-  }
 
   if (allArticles.length === 0) {
     console.error('[digest] Error: No articles fetched from any feed. Check network connection.');
@@ -1547,7 +1340,7 @@ async function main(): Promise<void> {
   const successfulFeedCount = fetchResult.healthEntries.filter((entry) => entry.status === 'ok').length;
 
   const report = generateDigestReport(finalArticles, highlights, {
-    totalFeeds: RSS_FEEDS.length + 1 + (waytoAgiLimit > 0 ? 1 : 0),
+    totalFeeds: RSS_FEEDS.length,
     successFeeds: successfulFeedCount,
     totalArticles: allArticles.length,
     filteredArticles: recentSourceArticles.length,
@@ -1567,7 +1360,7 @@ async function main(): Promise<void> {
   }
 
   const healthSummary = {
-    totalFeeds: RSS_FEEDS.length + 1 + (waytoAgiLimit > 0 ? 1 : 0),
+    totalFeeds: RSS_FEEDS.length,
     okFeeds: fetchResult.healthEntries.filter(e => e.status === 'ok').length,
     emptyFeeds: fetchResult.healthEntries.filter(e => e.status === 'empty').length,
     errorFeeds: fetchResult.healthEntries.filter(e => e.status === 'error').length,

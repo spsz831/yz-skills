@@ -200,6 +200,7 @@ async function callCodexCli(prompt: string, model?: string, reasoningEffort = 'l
   const args = [
     ...(codexEntry ? [codexEntry] : []),
     'exec',
+    '--ignore-user-config',
     '-c', `model_reasoning_effort=${JSON.stringify(reasoningEffort)}`,
     '--ephemeral',
     '--sandbox', 'read-only',
